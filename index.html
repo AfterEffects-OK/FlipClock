@@ -18,8 +18,9 @@
             --font-family: 'Roboto Mono', monospace;
             --border-radius: 6px;
             --clock-padding: 2rem;
-            --flip-duration: 0.19s;/* 個々のカードがめくれる時間 (少し長くして視認性を向上) */
-            --flip-delay-fast: 0.19s /* 時刻形式切り替え時の、次のカードがめくれるまでの待ち時間 */
+            /* ★ アニメーション速度を分離 */
+            --flip-duration-normal: 0.5s; /* 通常の時刻更新時のフラップ時間 */
+            --flip-duration-fast: 0.18s;  /* 時刻形式切り替え時の高速フラップ時間 */
         }
 
         body {
@@ -270,8 +271,8 @@
         .card.flipping .top-flip { z-index: 3; animation: flip-top var(--flip-duration) ease-in-out forwards; }
         .card.flipping .bottom-flip { z-index: 4; animation: flip-bottom var(--flip-duration) ease-in-out forwards; }
         
-        @keyframes flip-top { 0% { transform: rotateX(0deg); } 100% { transform: rotateX(-180deg); } }
-        @keyframes flip-bottom { 0% { transform: rotateX(180deg); } 100% { transform: rotateX(0deg); } }
+        @keyframes flip-top { from { transform: rotateX(0deg); } to { transform: rotateX(-180deg); } }
+        @keyframes flip-bottom { from { transform: rotateX(180deg); } to { transform: rotateX(0deg); } }
 
         /* ------------------------------------------- */
         /* 設定パネルとボタンのレイアウト */
@@ -560,8 +561,9 @@
         let currentTheme = 'dark'; 
         let isSettingsOpen = false; 
         // アニメーション関連の定数 (CSSから取得)
-        const FLIP_DURATION_MS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration')) * 1000;
-        const HOUR_FLIP_DELAY_MS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-delay-fast')) * 1000;
+        const FLIP_DURATION_NORMAL_MS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration-normal')) * 1000;
+        const FLIP_DURATION_FAST_MS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration-fast')) * 1000;
+        const HOUR_FLIP_DELAY_MS = FLIP_DURATION_FAST_MS + 40; // 高速フリップ時間 + バッファ
         let isDowAnimating = false; // 曜日フリップアニメーションの実行中フラグ
         let isTimeModeAnimating = false; // 時刻モード切り替えアニメーションの実行中フラグ
         const DOW_FLIP_SEQUENCE_3CHAR = [
@@ -612,6 +614,10 @@
         // Initialize
         function init() {
             setTheme('dark', true); // Initial theme setup (dark)
+            
+            // 全てのカードの初期アニメーション速度を通常に設定
+            setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
+
             // 初回表示時のみ、アニメーションなしで現在の曜日に設定
             const initialDowStr = getDayOfWeek('ja');
             flipDow(initialDowStr, true);
@@ -647,6 +653,20 @@
             toggleSettingsBtn.addEventListener('click', toggleSettingsPanel);
         }
         
+        /**
+         * すべてのフリップカードのアニメーション時間を設定します。
+         * @param {number} durationMs - アニメーション時間 (ミリ秒)
+         */
+        function setAllCardsAnimationDuration(durationMs) {
+            const durationS = `${durationMs / 1000}s`;
+            // :rootの--flip-duration変数を更新することで、すべてのカードに影響を与えます。
+            document.documentElement.style.setProperty('--flip-duration', durationS);
+        }
+
+
+
+
+
         /**
          * メインの更新ループ。requestAnimationFrameで呼び出されます。
          */
@@ -787,6 +807,9 @@
             isTimeModeAnimating = true;
             
             // 2. アニメーションの開始点 (古いモードの表示値) をアニメーションなしでセット
+            //    および、アニメーション速度を高速に設定
+            setAllCardsAnimationDuration(FLIP_DURATION_FAST_MS);
+
             const hTens = allDigits.time.hTens;
             const hOnes = allDigits.time.hOnes; 
             
@@ -842,6 +865,9 @@
             // アニメーション完了直後の最新の時刻でprevTimeStrを更新する
             prevTimeStr = getFormattedTimeString(is24Hour, new Date()); 
             isTimeModeAnimating = false;
+
+            // 6. アニメーション速度を通常に戻す
+            setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
             // updateDisplayはメインループから呼ばれるため、ここでの呼び出しは不要
             // updateDisplay(false); 
         }
@@ -872,6 +898,9 @@
             // アニメーション実行中は操作を無視
             if (isDowAnimating) return;
             
+            // 言語が同じなら何もしない
+            if (dowLanguage === lang) return;
+
             // 言語ボタンのアクティブ状態を更新
             btns.langJa.classList.remove('active');
             btns.langEn.classList.remove('active');
@@ -1020,6 +1049,9 @@
         async function animateDowTransition(targetDowStr, isInitial, isLanguageSwitch) {
             if (isDowAnimating) return;
 
+            // アニメーション速度を高速に設定
+            setAllCardsAnimationDuration(FLIP_DURATION_FAST_MS);
+
             const currentDow3Char = prevDayOfWeekStr; 
             const target3Char = targetDowStr;
 
@@ -1027,6 +1059,8 @@
             if (isInitial || !DOW_FLIP_SEQUENCE_3CHAR.includes(currentDow3Char) || !DOW_FLIP_SEQUENCE_3CHAR.includes(target3Char)) {
                 flipDow(target3Char, true);
                 prevDayOfWeekStr = target3Char;
+                // 速度を通常に戻す
+                setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
                 return;
             }
 
@@ -1075,7 +1109,7 @@
 
             isDowAnimating = true;
             // アニメーションが完全に完了するのを待つための遅延時間 (CSSアニメーション時間 + わずかなバッファ)
-            const flipDelay = FLIP_DURATION_MS + 50; 
+            const flipDelay = FLIP_DURATION_FAST_MS + 50; 
             
             try {
                 // sequenceToAnimateを順番に処理し、各フリップが完了するのを待つ
@@ -1087,6 +1121,8 @@
             } finally {
                 // 全てのフリップが完了したらフラグをリセット
                 isDowAnimating = false;
+                // アニメーション速度を通常に戻す
+                setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
             }
         }
         
@@ -1110,6 +1146,8 @@
             const bottom = card.querySelector('.bottom span');
             const topFlip = card.querySelector('.top-flip span');
             const bottomFlip = card.querySelector('.bottom-flip span');
+
+            const durationMs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration')) * 1000;
 
             if (isInitial) {
                 // アニメーションなしで即座に設定
@@ -1137,11 +1175,11 @@
 
             // 3. アニメーション終了後にクラスをクリアし、底側の表示を確定
             // ANIMATION_DURATIONの後に実行
-            setTimeout(() => { // FLIP_DURATION_MS後に実行
+            setTimeout(() => {
                 bottom.textContent = newValue;
                 topFlip.textContent = newValue; // topFlipの値もnewValueに統一 (次のアニメーション準備)
                 card.classList.remove('flipping');
-            }, FLIP_DURATION_MS); 
+            }, durationMs); 
         }
 
         function toggleFullScreen() {
