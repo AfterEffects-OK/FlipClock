@@ -850,10 +850,11 @@
             await animateHourTransition(sequence, HOUR_FLIP_DELAY);
 
             // 5. アニメーション完了後、prevTimeStrを新しい状態に設定し、通常の更新に戻す
-            const finalNow = new Date();
-            prevTimeStr = getFormattedTimeString(is24Hour, finalNow); 
+            // アニメーション完了直後の最新の時刻でprevTimeStrを更新する
+            prevTimeStr = getFormattedTimeString(is24Hour, new Date()); 
             isTimeModeAnimating = false;
-            updateDisplay(false); 
+            // updateDisplayはメインループから呼ばれるため、ここでの呼び出しは不要
+            // updateDisplay(false); 
         }
         
         /**
@@ -939,9 +940,6 @@
         }
 
         function updateDisplay(isInitial) {
-            // 時刻モードアニメーション実行中は、通常の1秒ごとの更新をスキップ
-            if (isTimeModeAnimating && !isInitial) return;
-            
             const now = new Date(); // Dateオブジェクトを一度だけ取得
 
             // --- Time Update ---
