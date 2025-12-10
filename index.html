@@ -663,11 +663,13 @@
         let is24Hour = true;
         let prevTimeStr = "000000";
         let prevDateStr = "000000";
-        let prevDayOfWeekStr = "(水)";
+        let prevDayOfWeekStr = "(日)";
         let dowLanguage = 'ja';
         let clockScale = 1.0;
         let currentTheme = 'dark'; 
         let isSettingsOpen = false; 
+        let initialPinchDistance = 0; // for pinch zoom
+        let initialPinchScale = 1.0; // for pinch zoom
         // アニメーション関連の定数 (CSSから取得)
         const FLIP_DURATION_NORMAL_MS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration-normal')) * 1000;
         const FLIP_DURATION_FAST_MS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration-fast')) * 1000;
@@ -777,6 +779,11 @@
 
             // マウスホイールでのサイズ調整
             timeWrapper.addEventListener('wheel', handleWheelScale);
+
+            // ピンチイン・アウトでのサイズ調整
+            timeWrapper.addEventListener('touchstart', handleTouchStart, { passive: false });
+            timeWrapper.addEventListener('touchmove', handleTouchMove, { passive: false });
+            timeWrapper.addEventListener('touchend', handleTouchEnd);
         }
         
         /**
@@ -1019,6 +1026,61 @@
             clockScale = Math.max(min, Math.min(max, clockScale));
             updateClockScale();
             saveSettings();
+        }
+
+        /**
+         * 2点間の距離を計算します。
+         * @param {TouchList} touches
+         * @returns {number}
+         */
+        function getDistance(touches) {
+            const touch1 = touches[0];
+            const touch2 = touches[1];
+            return Math.sqrt(
+                Math.pow(touch2.clientX - touch1.clientX, 2) +
+                Math.pow(touch2.clientY - touch1.clientY, 2)
+            );
+        }
+
+        /**
+         * ピンチ操作の開始をハンドルします。
+         * @param {TouchEvent} event
+         */
+        function handleTouchStart(event) {
+            if (event.touches.length === 2) {
+                event.preventDefault(); // ページのズームを防止
+                initialPinchDistance = getDistance(event.touches);
+                initialPinchScale = clockScale;
+            }
+        }
+
+        /**
+         * ピンチ操作中の動きをハンドルします。
+         * @param {TouchEvent} event
+         */
+        function handleTouchMove(event) {
+            if (event.touches.length === 2) {
+                event.preventDefault(); // ページのスクロール/ズームを防止
+                const newDistance = getDistance(event.touches);
+                const scaleFactor = newDistance / initialPinchDistance;
+                
+                let newScale = initialPinchScale * scaleFactor;
+                newScale = Math.max(0.2, Math.min(5.0, newScale)); // 最小・最大値の範囲内に収める
+
+                clockScale = newScale;
+                updateClockScale();
+            }
+        }
+
+        /**
+         * ピンチ操作の終了をハンドルします。
+         * @param {TouchEvent} event
+         */
+        function handleTouchEnd(event) {
+            if (initialPinchDistance > 0) {
+                initialPinchDistance = 0;
+                saveSettings();
+            }
         }
 
         /**
