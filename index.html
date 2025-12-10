@@ -774,6 +774,9 @@
             // サイズ調整用のイベントリスナー
             btns.resetSizeBtn.addEventListener('click', resetSize);
             initCustomSlider();
+
+            // マウスホイールでのサイズ調整
+            timeWrapper.addEventListener('wheel', handleWheelScale);
         }
         
         /**
@@ -992,6 +995,30 @@
             setTimeout(() => {
                 timeWrapper.style.transition = 'background 0.3s, border-color 0.3s, box-shadow 0.3s';
             }, 300);
+        }
+
+        /**
+         * マウスホイールで時計のサイズを調整します。
+         * @param {WheelEvent} event
+         */
+        function handleWheelScale(event) {
+            event.preventDefault(); // ページのスクロールを防止
+
+            const scaleStep = 0.05;
+            const min = 0.2;
+            const max = 5.0;
+
+            // ホイールを下にスクロールするとdeltaYは正、上にスクロールすると負
+            if (event.deltaY < 0) {
+                // 上にスクロール -> 拡大
+                clockScale += scaleStep;
+            } else {
+                // 下にスクロール -> 縮小
+                clockScale -= scaleStep;
+            }
+            clockScale = Math.max(min, Math.min(max, clockScale));
+            updateClockScale();
+            saveSettings();
         }
 
         /**
