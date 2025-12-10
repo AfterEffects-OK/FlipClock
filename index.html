@@ -16,7 +16,7 @@
             --text-color: #e0e0e0;
             --font-family: 'Roboto Mono', monospace;
             --border-radius: 6px;
-            --animation-speed: 0.3s; /* アニメーション時間を0.45秒から0.3秒に変更 (さらに高速化) */
+            --animation-speed: 0.25s; /* アニメーション時間を0.45秒から0.3秒に変更 (さらに高速化) */
             --clock-padding: 2rem;
         }
 
@@ -562,7 +562,7 @@
         let isDowAnimating = false; // 曜日フリップアニメーションの実行中フラグ
         let isTimeModeAnimating = false; // 時刻モード切り替えアニメーションの実行中フラグ
         // アニメーションの完了を待つ時間も短縮 (350ms)
-        const HOUR_FLIP_DELAY = 350; 
+        const HOUR_FLIP_DELAY = 300; 
         const DOW_FLIP_SEQUENCE_3CHAR = [
             '(日)', '(月)', '(火)', '(水)', '(木)', '(金)', '(土)', // 日本語
             'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'      // 英語
