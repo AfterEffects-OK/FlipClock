@@ -18,7 +18,6 @@
             --font-family: 'Roboto Mono', monospace;
             --border-radius: 6px;
             --clock-padding: 2rem;
-            /* ★ アニメーション速度を分離 */
             --flip-duration-normal: 0.5s; /* 通常の時刻更新時のフラップ時間 */
             --flip-duration-fast: 0.18s;  /* 時刻形式切り替え時の高速フラップ時間 */
         }
@@ -30,14 +29,21 @@
             font-family: var(--font-family);
             overflow: hidden;
             height: 100vh;
+            margin: 0;
+            transition: background-color 0.3s; /* 背景色変更時のトランジション */
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            margin: 0;
-            transition: background-color 0.3s; /* 背景色変更時のトランジション */
+            justify-content: center; /* コンテナを中央に配置 */
         }
 
+        .clock-and-settings-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative; /* .top-controls の基準とならないように */
+        }
+        
         /* ------------------------------------------- */
         /* テーマクラス: bodyに適用されます */
         /* ------------------------------------------- */
@@ -93,6 +99,9 @@
             border: 1px solid #333;
             padding: var(--clock-padding);
             transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+            z-index: 1; /* ボタン類との重なり順を制御 */
+            transform: scale(var(--clock-scale, 1)); /* ★ サイズ調整用のscaleを追加 */
+            transform-origin: center center; /* ★ 中央を基点に拡大・縮小 */
         }
 
         /* Date Display Styling (Smaller Flip Cards) */
@@ -286,13 +295,15 @@
             right: 1rem;
             display: flex;
             gap: 0.5rem;
-            z-index: 100; /* 最前面に表示 */
+            z-index: 10; /* time-wrapperより手前に表示 */
         }
         
         .settings-panel {
             /* 初期状態は非表示 */
             opacity: 0;
-            visibility: hidden;
+            position: relative; /* z-indexを有効にするため */
+            z-index: 10; /* time-wrapperより手前に表示 */
+            visibility: hidden; /* 初期状態は非表示 */
             max-height: 0;
             margin-top: 0;
             padding: 0 1rem;
@@ -307,7 +318,7 @@
             opacity: 1;
             visibility: visible;
             max-height: 300px; /* パネルの内容に合わせて適切な値を設定 */
-            margin-top: 1.5rem;
+            margin-top: 1.5rem; /* 時計とのマージン */
         }
 
         /* 内部のコントロールグループ */
@@ -365,6 +376,13 @@
             font-weight: 500;
         }
         
+        /* アクションボタン用のスタイル (リセットなど) */
+        .btn-action {
+            background: #333;
+            border-color: #444;
+            color: #ccc;
+        }
+        
         /* ------------------------------------------- */
         /* 白テーマ時のボタンのスタイルオーバーライド */
         /* ------------------------------------------- */
@@ -394,7 +412,41 @@
             color: #333; 
             border-color: #bbb;
         }
+        
+        .theme-light .btn-action {
+            background: #e0e0e0;
+            border-color: #ccc;
+            color: #555;
+        }
         /* ------------------------------------------- */
+        
+        /* --- SIZE CONTROL STYLING --- */
+        .size-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            width: 100%;
+            max-width: 620px; /* スライダーをさらに長くするために幅を広げる */
+            justify-content: center;
+        }
+        .size-controls label {
+            font-size: 0.8rem;
+            color: #999;
+            white-space: nowrap;
+        }
+        .theme-light .size-controls label {
+            color: #666;
+        }
+        .size-controls input[type="range"] {
+            flex: 1; /* 残りのスペースをすべて使う */
+            min-width: 50px; /* 最小幅を確保 */
+        }
+        /* リセットボタンが改行しないようにする */
+        #reset-size {
+            white-space: nowrap;
+        }
 
 
         /* Custom Color Picker Styling */
@@ -462,92 +514,101 @@
         </button>
     </div>
 
-    <div class="time-wrapper">
-        <!-- Date Display -->
-        <div class="date-display">
-            <!-- Year -->
-            <div class="group" data-label="Year">
-                <div class="card date-digit" id="d-year-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-                <div class="card date-digit" id="d-year-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+    <div class="clock-and-settings-container">
+        <div class="time-wrapper">
+            <!-- Date Display -->
+            <div class="date-display">
+                <!-- Year -->
+                <div class="group" data-label="Year">
+                    <div class="card date-digit" id="d-year-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                    <div class="card date-digit" id="d-year-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                </div>
+
+                <div class="date-separator">/</div>
+
+                <!-- Month -->
+                <div class="group" data-label="Month">
+                    <div class="card date-digit" id="d-month-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                    <div class="card date-digit" id="d-month-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                </div>
+
+                <div class="date-separator">/</div>
+
+                <!-- Day -->
+                <div class="group" data-label="Day">
+                    <div class="card date-digit" id="d-day-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                    <div class="card date-digit" id="d-day-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                </div>
+                
+                <!-- Day of Week (New Flip Card Structure) -->
+                <div class="day-of-week-group">
+                    <div class="card dow-digit" id="dow-char1"><div class="top"><span>(</span></div><div class="bottom"><span>(</span></div><div class="top-flip"><span>(</span></div><div class="bottom-flip"><span>(</span></div></div>
+                    <div class="card dow-digit" id="dow-char2"><div class="top"><span>水</span></div><div class="bottom"><span>水</span></div><div class="top-flip"><span>水</span></div><div class="bottom-flip"><span>水</span></div></div>
+                    <div class="card dow-digit" id="dow-char3"><div class="top"><span>)</span></div><div class="bottom"><span>)</span></div><div class="top-flip"><span>)</span></div><div class="bottom-flip"><span>)</span></div></div>
+                </div>
             </div>
+            <!-- End Date Display -->
 
-            <div class="date-separator">/</div>
+            <div class="clock">
+                <!-- Hours -->
+                <div class="group" data-label="Hours">
+                    <div class="card time-digit" id="h-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                    <div class="card time-digit" id="h-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                </div>
 
-            <!-- Month -->
-            <div class="group" data-label="Month">
-                <div class="card date-digit" id="d-month-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-                <div class="card date-digit" id="d-month-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                <div class="separator">:</div>
+
+                <!-- Minutes -->
+                <div class="group" data-label="Minutes">
+                    <div class="card time-digit" id="m-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                    <div class="card time-digit" id="m-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                </div>
+
+                <div class="separator">:</div>
+
+                <!-- Seconds -->
+                <div class="group" data-label="Seconds">
+                    <div class="card time-digit" id="s-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                    <div class="card time-digit" id="s-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                </div>
             </div>
-
-            <div class="date-separator">/</div>
-
-            <!-- Day -->
-            <div class="group" data-label="Day">
-                <div class="card date-digit" id="d-day-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-                <div class="card date-digit" id="d-day-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-            </div>
-            
-            <!-- Day of Week (New Flip Card Structure) -->
-            <div class="day-of-week-group">
-                <div class="card dow-digit" id="dow-char1"><div class="top"><span>(</span></div><div class="bottom"><span>(</span></div><div class="top-flip"><span>(</span></div><div class="bottom-flip"><span>(</span></div></div>
-                <div class="card dow-digit" id="dow-char2"><div class="top"><span>水</span></div><div class="bottom"><span>水</span></div><div class="top-flip"><span>水</span></div><div class="bottom-flip"><span>水</span></div></div>
-                <div class="card dow-digit" id="dow-char3"><div class="top"><span>)</span></div><div class="bottom"><span>)</span></div><div class="top-flip"><span>)</span></div><div class="bottom-flip"><span>)</span></div></div>
-            </div>
-        </div>
-        <!-- End Date Display -->
-
-        <div class="clock">
-            <!-- Hours -->
-            <div class="group" data-label="Hours">
-                <div class="card time-digit" id="h-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-                <div class="card time-digit" id="h-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-            </div>
-
-            <div class="separator">:</div>
-
-            <!-- Minutes -->
-            <div class="group" data-label="Minutes">
-                <div class="card time-digit" id="m-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-                <div class="card time-digit" id="m-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-            </div>
-
-            <div class="separator">:</div>
-
-            <!-- Seconds -->
-            <div class="group" data-label="Seconds">
-                <div class="card time-digit" id="s-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-                <div class="card time-digit" id="s-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 設定パネル (初期非表示) -->
-    <div class="settings-panel" id="settings-panel">
-        <div class="controls">
-            <!-- Time Mode Controls -->
-            <button class="btn active" id="mode-24">24H</button>
-            <button class="btn" id="mode-12">12H</button>
-
-            <!-- Separator -->
-            <span class="text-sm text-gray-400 mx-2">|</span>
-
-            <!-- Day of Week Language Selection Controls -->
-            <button class="btn active" id="lang-ja">日本語</button>
-            <button class="btn" id="lang-en">English</button>
         </div>
         
-        <!-- Theme Controls (New Section) -->
-        <div class="theme-controls">
-            <button class="btn active theme-btn" data-theme="dark" id="theme-dark">黒</button>
-            <button class="btn theme-btn" data-theme="light" id="theme-light">白</button>
-            <button class="btn theme-btn" data-theme="transparent" id="theme-transparent">透明</button>
-            
-            <!-- Separator -->
-            <span class="text-sm text-gray-400 mx-2">|</span>
+        <!-- 設定パネル (初期非表示) -->
+        <div class="settings-panel" id="settings-panel">
+            <div class="controls">
+                <!-- Time Mode Controls -->
+                <button class="btn active" id="mode-24">24H</button>
+                <button class="btn" id="mode-12">12H</button>
 
-            <div class="custom-color-group">
-                <input type="color" id="custom-color-picker" value="#3a3a3a">
-                <button class="btn theme-btn" data-theme="custom" id="theme-custom" style="padding: 0.4rem 0.8rem;">カスタム</button>
+                <!-- Separator -->
+                <span class="text-sm text-gray-400 mx-2">|</span>
+
+                <!-- Day of Week Language Selection Controls -->
+                <button class="btn active" id="lang-ja">日本語</button>
+                <button class="btn" id="lang-en">English</button>
+            </div>
+            
+            <!-- Theme Controls (New Section) -->
+            <div class="theme-controls">
+                <button class="btn active theme-btn" data-theme="dark" id="theme-dark">黒</button>
+                <button class="btn theme-btn" data-theme="light" id="theme-light">白</button>
+                <button class="btn theme-btn" data-theme="transparent" id="theme-transparent">透明</button>
+                
+                <!-- Separator -->
+                <span class="text-sm text-gray-400 mx-2">|</span>
+
+                <div class="custom-color-group">
+                    <input type="color" id="custom-color-picker" value="#3a3a3a">
+                    <button class="btn theme-btn" data-theme="custom" id="theme-custom" style="padding: 0.4rem 0.8rem;">カスタム</button>
+                </div>
+            </div>
+
+            <!-- Size Controls (New Section) -->
+            <div class="size-controls">
+                <label for="size-slider">サイズ</label>
+                <input type="range" id="size-slider" min="0.2" max="5.0" step="0.05" value="1" aria-label="時計のサイズ">
+                <button class="btn btn-action" id="reset-size">リセット</button>
             </div>
         </div>
     </div>
@@ -561,6 +622,7 @@
         let prevDateStr = "000000";
         let prevDayOfWeekStr = "(水)";
         let dowLanguage = 'ja';
+        let clockScale = 1.0;
         let currentTheme = 'dark'; 
         let isSettingsOpen = false; 
         // アニメーション関連の定数 (CSSから取得)
@@ -578,6 +640,7 @@
         // DOM Elements
         const body = document.body;
         const settingsPanel = document.getElementById('settings-panel');
+        const timeWrapper = document.querySelector('.time-wrapper');
         const toggleSettingsBtn = document.getElementById('toggle-settings');
         
         const btns = {
@@ -587,6 +650,8 @@
             langEn: document.getElementById('lang-en'),
             themeBtns: document.querySelectorAll('.theme-btn'), 
             customColorPicker: document.getElementById('custom-color-picker'),
+            sizeSlider: document.getElementById('size-slider'),
+            resetSizeBtn: document.getElementById('reset-size'),
         };
         
         // Define objects to store DOM elements for better code structure
@@ -616,12 +681,20 @@
 
         // Initialize
         function init() {
-            setTheme('dark', true); // Initial theme setup (dark)
+            // 保存された設定を読み込む
+            loadSettings();
+
+
+            // テーマとサイズを適用
+            setTheme(currentTheme);
             
             // 全てのカードの初期アニメーション速度を通常に設定
             setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
 
             // 初回表示時のみ、アニメーションなしで現在の曜日に設定
+            // また、設定パネルの位置を初期化
+            updateSettingsPanelPosition();
+
             const initialDowStr = getDayOfWeek('ja');
             flipDow(initialDowStr, true);
             prevDayOfWeekStr = initialDowStr;
@@ -654,6 +727,10 @@
             
             // 設定パネルの開閉トグル
             toggleSettingsBtn.addEventListener('click', toggleSettingsPanel);
+
+            // サイズ調整用のイベントリスナー
+            btns.sizeSlider.addEventListener('input', handleSizeChange);
+            btns.resetSizeBtn.addEventListener('click', resetSize);
         }
         
         /**
@@ -666,9 +743,34 @@
             document.documentElement.style.setProperty('--flip-duration', durationS);
         }
 
+        /**
+         * localStorageから設定を読み込み、適用します。
+         */
+ function loadSettings() {
+            const savedTheme = localStorage.getItem('flipClockTheme') || 'dark';
+            const savedColor = localStorage.getItem('flipClockCustomColor');
+            const savedScale = parseFloat(localStorage.getItem('flipClockScale')) || 1.0;
 
+            currentTheme = savedTheme;
+            clockScale = savedScale;
 
+            if (savedColor) {
+                btns.customColorPicker.value = savedColor;
+            }
 
+            // スライダーの初期位置を設定
+            btns.sizeSlider.value = clockScale;
+            // CSS変数を更新してサイズを適用
+            timeWrapper.style.setProperty('--clock-scale', clockScale);
+        }
+
+        /**
+         * 現在の設定をlocalStorageに保存します。
+         */
+ function saveSettings() {
+            localStorage.setItem('flipClockTheme', currentTheme);
+            localStorage.setItem('flipClockScale', clockScale);
+        }
 
         /**
          * メインの更新ループ。requestAnimationFrameで呼び出されます。
@@ -693,8 +795,29 @@
                 toggleSettingsBtn.querySelector('i').classList.replace('fa-times', 'fa-cog'); // 歯車アイコンに戻す
                 toggleSettingsBtn.setAttribute('aria-label', '設定を開く');
             }
+            // パネルの開閉状態に応じてマージンを更新
+            updateSettingsPanelPosition();
         }
 
+        /**
+         * 時計のスケールに合わせて設定パネルの位置を調整します。
+         */
+        function updateSettingsPanelPosition() {
+            // パネルが閉じていればマージンは不要
+            if (!isSettingsOpen) {
+                settingsPanel.style.marginTop = '0px';
+                return;
+            }
+
+            const baseMarginRem = 1.5; // .settings-panel.open の基本マージン
+            const remInPixels = parseFloat(getComputedStyle(document.documentElement).fontSize);
+            const baseMarginPixels = baseMarginRem * remInPixels;
+
+            const clockHeight = timeWrapper.offsetHeight;
+            const extraHeight = (clockHeight * clockScale - clockHeight) / 2;
+
+            settingsPanel.style.marginTop = `${baseMarginPixels + extraHeight}px`;
+        }
 
         /**
          * テーマを切り替え、bodyのクラスとカスタムCSS変数を更新します。
@@ -738,6 +861,30 @@
                     // 背景色に応じて文字色を自動変更する機能を削除
                     break;
             }
+            saveSettings();
+        }
+
+        /**
+         * スライダーの変更をハンドルし、時計のサイズを更新します。
+         */
+        function handleSizeChange(event) {
+            clockScale = parseFloat(event.target.value);
+            timeWrapper.style.setProperty('--clock-scale', clockScale);
+            updateSettingsPanelPosition(); // スケール変更時にパネル位置を更新
+            saveSettings();
+        }
+
+        /**
+         * 時計のサイズをデフォルトにリセットします。
+         */
+        function resetSize() {
+            clockScale = 1.0;
+            btns.sizeSlider.value = clockScale;
+            // トランジションを追加して滑らかにリセット
+            timeWrapper.style.transition = 'transform 0.3s ease-in-out';
+            timeWrapper.style.setProperty('--clock-scale', clockScale);
+            updateSettingsPanelPosition(); // スケール変更時にパネル位置を更新
+            saveSettings();
         }
 
         /**
