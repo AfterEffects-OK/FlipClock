@@ -16,7 +16,7 @@
             --text-color: #e0e0e0;
             --font-family: 'Roboto Mono', monospace;
             --border-radius: 6px;
-            --animation-speed: 0.6s;
+            --animation-speed: 0.3s; /* アニメーション時間を0.45秒から0.3秒に変更 (さらに高速化) */
             --clock-padding: 2rem;
         }
 
@@ -307,7 +307,7 @@
         /* 内部のコントロールグループ */
         .controls, .theme-controls {
             display: flex;
-            gap: 0.5rem; /* 1remから0.5remに縮小しました */
+            gap: 0.5rem; /* ボタン間の間隔を調整 */
             flex-wrap: wrap;
             justify-content: center;
         }
@@ -316,7 +316,7 @@
             padding-bottom: 0.5rem;
         }
 
-        /* --- CONTROL BUTTON STYLING (MODIFIED) --- */
+        /* --- CONTROL BUTTON STYLING --- */
         .btn {
             background: transparent;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -461,8 +461,8 @@
         <div class="date-display">
             <!-- Year -->
             <div class="group" data-label="Year">
-                <div class="card date-digit" id="d-year-tens"><div class="top"><span>2</span></div><div class="bottom"><span>2</span></div><div class="top-flip"><span>2</span></div><div class="bottom-flip"><span>2</span></div></div>
-                <div class="card date-digit" id="d-year-ones"><div class="top"><span>4</span></div><div class="bottom"><span>4</span></div><div class="top-flip"><span>4</span></div><div class="bottom-flip"><span>4</span></div></div>
+                <div class="card date-digit" id="d-year-tens"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
+                <div class="card date-digit" id="d-year-ones"><div class="top"><span>0</span></div><div class="bottom"><span>0</span></div><div class="top-flip"><span>0</span></div><div class="bottom-flip"><span>0</span></div></div>
             </div>
 
             <div class="date-separator">/</div>
@@ -556,8 +556,18 @@
         let prevDayOfWeekStr = "(水)";
         let dowLanguage = 'ja';
         let currentTheme = 'dark'; 
-        let isSettingsOpen = false; // New State: Settings panel state
-        const ANIMATION_DURATION = 600;
+        let isSettingsOpen = false; 
+        // アニメーション時間: 0.3秒
+        const ANIMATION_DURATION = 300; 
+        let isDowAnimating = false; // 曜日フリップアニメーションの実行中フラグ
+        let isTimeModeAnimating = false; // 時刻モード切り替えアニメーションの実行中フラグ
+        // アニメーションの完了を待つ時間も短縮 (350ms)
+        const HOUR_FLIP_DELAY = 350; 
+        const DOW_FLIP_SEQUENCE_3CHAR = [
+            '(日)', '(月)', '(火)', '(水)', '(木)', '(金)', '(土)', // 日本語
+            'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'      // 英語
+        ];
+
 
         // DOM Elements
         const body = document.body;
@@ -601,9 +611,22 @@
         // Initialize
         function init() {
             setTheme('dark', true); // Initial theme setup (dark)
-            setDowLanguage(dowLanguage, true); 
+            // 初回表示時のみ、アニメーションなしで現在の曜日に設定
+            const initialDowStr = getDayOfWeek('ja');
+            flipDow(initialDowStr, true);
+            prevDayOfWeekStr = initialDowStr;
+            
             updateDisplay(true);
-            setInterval(() => updateDisplay(false), 1000); 
+            // 1秒ごとの更新。時刻モード切り替え中はスキップされる
+            // 1秒に満たない場合はsetTimeoutを使い、正確なタイミングで実行する
+            const updateLoop = () => {
+                updateDisplay(false);
+                const now = new Date();
+                const msUntilNextSecond = 1000 - now.getMilliseconds();
+                // 1秒に満たない場合はsetTimeoutを使い、正確なタイミングで実行する
+                setTimeout(updateLoop, msUntilNextSecond + 1); // +1msのバッファを追加
+            };
+            setTimeout(updateLoop, 1000 - new Date().getMilliseconds()); // 最初の実行を調整
             
             // Event Listeners for Time/Language
             btns.mode24.addEventListener('click', () => setMode(true));
@@ -615,11 +638,7 @@
             btns.themeBtns.forEach(btn => {
                 btn.addEventListener('click', () => {
                     const theme = btn.getAttribute('data-theme');
-                    if (theme === 'custom') {
-                        setTheme(theme);
-                    } else {
-                        setTheme(theme);
-                    }
+                    setTheme(theme);
                 });
             });
 
@@ -659,7 +678,6 @@
             currentTheme = themeName;
             
             // 1. クラスの更新とボタンのアクティブ状態の設定
-            // theme-light, theme-transparent, theme-custom以外のクラスは全て削除
             body.classList.remove('theme-light', 'theme-transparent', 'theme-custom'); 
             btns.themeBtns.forEach(btn => btn.classList.remove('active'));
 
@@ -678,20 +696,16 @@
             // 2. CSS変数とクラスの適用
             switch(themeName) {
                 case 'dark':
-                    // デフォルトテーマ (CSSの:rootで定義されている値を明示的に設定)
                     document.documentElement.style.setProperty('--body-bg', '#1a1a1a');
                     document.documentElement.style.setProperty('--text-color', '#e0e0e0');
                     break;
                 case 'light':
-                    // 白テーマ
                     body.classList.add('theme-light');
                     break;
                 case 'transparent':
-                    // 透明テーマ
                     body.classList.add('theme-transparent');
                     break;
                 case 'custom':
-                    // カスタムテーマ
                     const color = btns.customColorPicker.value;
                     body.classList.add('theme-custom');
                     document.documentElement.style.setProperty('--body-bg', color);
@@ -700,7 +714,7 @@
                     const r = parseInt(color.slice(1, 3), 16);
                     const g = parseInt(color.slice(3, 5), 16);
                     const b = parseInt(color.slice(5, 7), 16);
-                    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                    const luminance = (0.299 * r + 0.587 * g + 0.114 * b * b) / 255;
                     
                     if (luminance > 0.5) {
                         document.documentElement.style.setProperty('--text-color', '#333');
@@ -711,57 +725,19 @@
             }
         }
 
-        function setMode(is24) {
-            is24Hour = is24;
-            if (is24) {
-                btns.mode24.classList.add('active');
-                btns.mode12.classList.remove('active');
-            } else {
-                btns.mode24.classList.remove('active');
-                btns.mode12.classList.add('active');
-            }
-            prevTimeStr = "xxxxxx"; 
-            updateDisplay(false);
-        }
+        /**
+         * 指定されたモードとDateオブジェクトに基づいて時刻文字列を返します。
+         * @param {boolean} is24 - 24時間モードかどうか
+         * @param {Date} date - Dateオブジェクト
+         * @returns {string} 時刻文字列 (HHTTSS)
+         */
+        function getFormattedTimeString(is24, date = new Date()) {
+            let hours = date.getHours();
+            const minutes = date.getMinutes();
+            const seconds = date.getSeconds();
 
-        function setDowLanguage(lang, isInitial = false) {
-            dowLanguage = lang;
-            if (lang === 'ja') {
-                btns.langJa.classList.add('active');
-                btns.langEn.classList.remove('active');
-            } else {
-                btns.langEn.classList.add('active');
-                btns.langJa.classList.remove('active');
-            }
-            
-            const newDayOfWeekStr = getDayOfWeek();
-            const oldDayOfWeekStr = prevDayOfWeekStr;
-            
-            const dowDigitMap = [
-                { el: allDigits.dow.char1, val: newDayOfWeekStr[0] },
-                { el: allDigits.dow.char2, val: newDayOfWeekStr[1] },
-                { el: allDigits.dow.char3, val: newDayOfWeekStr[2] }
-            ];
-
-            dowDigitMap.forEach((item, index) => {
-                if (isInitial || item.val !== oldDayOfWeekStr[index]) {
-                    flipCard(item.el, item.val, isInitial); 
-                }
-            });
-
-            prevDayOfWeekStr = newDayOfWeekStr;
-        }
-
-        function getTimeString() {
-            const now = new Date();
-            let hours = now.getHours();
-            const minutes = now.getMinutes();
-            const seconds = now.getSeconds();
-
-            if (!is24Hour) {
-                hours = hours % 12;
-                hours = hours ? hours : 12;
-            }
+            // getHourDisplayNumberを使用
+            hours = getHourDisplayNumber(is24, hours);
 
             const hStr = String(hours).padStart(2, '0');
             const mStr = String(minutes).padStart(2, '0');
@@ -769,12 +745,188 @@
 
             return hStr + mStr + sStr;
         }
+        
+        /**
+         * 24時間表示(0-23)を、指定されたモード(12H:1-12, 24H:0-23)に対応する数値に変換します。
+         *
+         * 注: 12Hモードでは、00:xx (午前0時台) は '00' と表示されます。
+         * 12:xx (正午) は '12' と表示されます。
+         *
+         * @param {boolean} is24 - 24時間モードかどうか
+         * @param {number} hour24 - 現在の24時間表示の時 (0-23)
+         * @returns {number} 表示すべき時 (0-23)
+         */
+        function getHourDisplayNumber(is24, hour24) {
+             if (is24) {
+                 return hour24; // 0-23
+             } else {
+                 if (hour24 === 0) return 0; // 00:xx (午前0時台) は '00' を表示
+                 if (hour24 >= 13) {
+                     return hour24 - 12; // 午後 (13-23 -> 1-11)
+                 }
+                 return hour24; // 午前 (1-11) または正午 (12)
+             }
+        }
 
-        function getDateString() {
+        /**
+         * 時刻モードを切り替え、フリップアニメーションを起動します。
+         * @param {boolean} newIs24Hour - 新しいモードが24時間かどうか
+         */
+        async function setMode(newIs24Hour) {
+            if (isTimeModeAnimating) return; // アニメーション中は操作を無視
+            if (is24Hour === newIs24Hour) return; // モードが同じなら何もしない
+
             const now = new Date();
-            const year = now.getFullYear() % 100;
-            const month = now.getMonth() + 1;
-            const day = now.getDate();
+            const current24Hour = now.getHours(); // 0-23 (内部的な基準時間)
+
+            const oldIs24Hour = is24Hour; // 古いモードを保存
+            const targetModeIs24H = newIs24Hour; // 目標モードをローカルに保存
+            
+            // 1. UIの更新 (ボタンのアクティブ状態)
+            is24Hour = newIs24Hour;
+            btns.mode24.classList.remove('active');
+            btns.mode12.classList.remove('active');
+            if (is24Hour) {
+                btns.mode24.classList.add('active');
+            } else {
+                btns.mode12.classList.add('active');
+            }
+            
+            isTimeModeAnimating = true;
+            
+            // 2. アニメーションの開始点 (古いモードの表示値) をアニメーションなしでセット
+            const hTens = allDigits.time.hTens;
+            const hOnes = allDigits.time.hOnes; 
+            
+            const oldHourNumber = getHourDisplayNumber(oldIs24Hour, current24Hour); 
+            const oldHourStr = String(oldHourNumber).padStart(2, '0');
+            
+            // アニメーションの開始点を古い値に強制的に設定 (アニメーションなし)
+            flipCard(hTens, oldHourStr[0], true);
+            flipCard(hOnes, oldHourStr[1], true);
+            
+            
+            // 3. 循環アニメーションシーケンスの構築 (修正: 00:00で24H表示に切り替わり、次のステップでターゲットモードに切り替える)
+            const sequence = []; 
+            let hourToAnimate;
+            let displayFormatIs24H = oldIs24Hour; // 最初は古いモードのフォーマットを使用
+
+            // 現在の24Hの時 (0-23) からスタート
+            // 24ステップ回すことで必ず現在の時間に戻ってこれる
+            for (let i = 1; i <= 24; i++) { 
+                hourToAnimate = (current24Hour + i) % 24; // 24Hの値 (0-23)
+
+                let displayHourNumber;
+                
+                if (hourToAnimate === 0) {
+                    // 24Hの00:xxに到達した瞬間は、必ず 00 (24H形式) を表示する
+                    displayHourNumber = 0; 
+                    displayFormatIs24H = true; // 表示形式を24Hに強制
+                } else if (hourToAnimate === 1) {
+                    // 00:xxの次のステップ (01:xx) からターゲットモードのフォーマットに切り替える
+                    displayFormatIs24H = targetModeIs24H;
+                    displayHourNumber = getHourDisplayNumber(displayFormatIs24H, hourToAnimate);
+                } else {
+                    // それ以外の時間は、現在の displayFormatIs24H に従って表示する
+                    displayHourNumber = getHourDisplayNumber(displayFormatIs24H, hourToAnimate);
+                }
+                
+                const displayStr = String(displayHourNumber).padStart(2, '0');
+                sequence.push(displayStr);
+                
+                // 停止条件: ターゲットモードに切り替わった後、現在の24H時間に戻ったら停止
+                // ターゲットモードへの切り替えは hourToAnimate === 1 で発生するため、
+                // hourToAnimate >= 1 の時点で停止条件をチェックする
+                if (hourToAnimate === current24Hour && i > 12) { 
+                     // i > 12 は無限ループを防ぎ、最低12時間分フリップを保証するための措置
+                     break;
+                }
+            }
+
+            // 4. アニメーションの実行
+            await animateHourTransition(sequence, HOUR_FLIP_DELAY);
+
+            // 5. アニメーション完了後、prevTimeStrを新しい状態に設定し、通常の更新に戻す
+            const finalNow = new Date();
+            prevTimeStr = getFormattedTimeString(is24Hour, finalNow); 
+            isTimeModeAnimating = false;
+            updateDisplay(false); 
+        }
+        
+        /**
+         * 時刻の桁をフルサイクルでアニメーションさせます。
+         * @param {string[]} sequence - '03', '04', ..., '02' のように、表示する2桁の文字列配列
+         * @param {number} flipDelay - フリップ間の遅延時間 (ms)
+         */
+        async function animateHourTransition(sequence, flipDelay) {
+            const hTens = allDigits.time.hTens;
+            const hOnes = allDigits.time.hOnes; 
+
+            for (let i = 0; i < sequence.length; i++) {
+                const nextHStr = sequence[i]; // フリップ後の表示値
+                
+                // flipCardは現在のtopの値を見て、newValueが異なるときのみアニメーションをトリガーします。
+                flipCard(hTens, nextHStr[0], false);
+                flipCard(hOnes, nextHStr[1], false); 
+
+                // フリップが完了するまで待機
+                await new Promise(resolve => setTimeout(resolve, flipDelay));
+            }
+        }
+
+
+        function setDowLanguage(lang) {
+            // アニメーション実行中は操作を無視
+            if (isDowAnimating) return;
+            
+            // 言語ボタンのアクティブ状態を更新
+            btns.langJa.classList.remove('active');
+            btns.langEn.classList.remove('active');
+            if (lang === 'ja') {
+                btns.langJa.classList.add('active');
+            } else {
+                btns.langEn.classList.add('active');
+            }
+            
+            dowLanguage = lang;
+            
+            const newDayOfWeekStr = getDayOfWeek();
+            
+            // 言語が変わった場合は、フリップシーケンスを実行
+            if (newDayOfWeekStr !== prevDayOfWeekStr) {
+                // 言語切り替えフラグを立てて実行
+                animateDowTransition(newDayOfWeekStr, false, true); 
+            }
+        }
+
+        /**
+         * 曜日表示の3文字文字列を返します。
+         * @param {string} lang 取得したい言語 ('ja' or 'en')
+         * @returns {string} 3文字形式の曜日文字列 (例: "(水)", "Wed")
+         */
+        function getDayOfWeek(lang = dowLanguage) {
+            const now = new Date();
+            const dayIndex = now.getDay();
+            
+            if (lang === 'ja') {
+                const daysJa = ["(日)", "(月)", "(火)", "(水)", "(木)", "(金)", "(土)"];
+                return daysJa[dayIndex];
+            } else {
+                // 英語 (Thuを使用)
+                const daysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                return daysEn[dayIndex];
+            }
+        }
+        
+        /**
+         * 指定されたDateオブジェクトに基づいて日付文字列を返します。
+         * @param {Date} date - Dateオブジェクト
+         * @returns {string} 日付文字列 (YYMMDD)
+         */
+        function getDateString(date) {
+            const year = date.getFullYear() % 100;
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
 
             const yStr = String(year).padStart(2, '0');
             const mStr = String(month).padStart(2, '0');
@@ -783,23 +935,14 @@
             return yStr + mStr + dStr;
         }
 
-        function getDayOfWeek() {
-            const now = new Date();
-            const dayIndex = now.getDay();
-            
-            if (dowLanguage === 'ja') {
-                const daysJa = ["(日)", "(月)", "(火)", "(水)", "(木)", "(金)", "(土)"];
-                return daysJa[dayIndex];
-            } else {
-                const daysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                // 3文字表示のため、最初の3文字を返す
-                return daysEn[dayIndex].substring(0, 3);
-            }
-        }
-
         function updateDisplay(isInitial) {
+            // 時刻モードアニメーション実行中は、通常の1秒ごとの更新をスキップ
+            if (isTimeModeAnimating && !isInitial) return;
+            
+            const now = new Date(); // Dateオブジェクトを一度だけ取得
+
             // --- Time Update ---
-            const timeStr = getTimeString();
+            const timeStr = getFormattedTimeString(is24Hour, now); 
             
             const timeDigitMap = [
                 { el: allDigits.time.hTens, val: timeStr[0] },
@@ -812,6 +955,12 @@
 
             timeDigitMap.forEach((item, index) => {
                 const prevVal = prevTimeStr[index];
+                // 時刻モードアニメーション中は、時(H)の桁はanimateHourTransitionで制御されるため、
+                // Hの桁(インデックス0, 1)はスキップする
+                if (isTimeModeAnimating && (index === 0 || index === 1) ) {
+                    return;
+                }
+                
                 if (item.val !== prevVal) {
                     flipCard(item.el, item.val, isInitial);
                 }
@@ -821,10 +970,9 @@
 
 
             // --- Date and Day of Week Update ---
-            // 毎分00秒に日付と曜日を更新
-            if (timeStr.slice(4) === "00" || isInitial) {
-                const dateStr = getDateString();
-                const dayOfWeekStr = getDayOfWeek();
+            // 毎分00秒、または日付が変わるタイミングで更新
+            if (now.getSeconds() === 0 || isInitial) {
+                const dateStr = getDateString(now);
                 
                 // 1. Date Flipping
                 const dateDigitMap = [
@@ -843,16 +991,128 @@
                     }
                 });
                 
-                // 日付が変わったら、曜日も強制的に更新
-                if (dateStr !== prevDateStr) {
-                    setDowLanguage(dowLanguage, true); 
+                // 2. Day of Week Flipping (日付が変わったら曜日も更新)
+                if (dateStr !== prevDateStr || isInitial) {
+                    const newDayOfWeekStr = getDayOfWeek();
+                    
+                    // 日付が変わった場合、または初回でprevDayOfWeekStrが初期値の場合
+                    if (newDayOfWeekStr !== prevDayOfWeekStr && !isDowAnimating) {
+                        animateDowTransition(newDayOfWeekStr, isInitial, false);
+                    }
                 }
                 
                 prevDateStr = dateStr;
-
-                // 2. Day of Week Flipping (言語が切り替わった場合のみsetDowLanguageで処理されるため、ここはスキップ)
-                // 毎分実行する必要はないため、処理を省略。
             }
+        }
+        
+        /**
+         * 指定されたミリ秒待機し、フリップ操作を実行するPromiseヘルパー
+         * @param {string} value - 次の曜日文字列
+         * @param {number} delayMs - 待機ミリ秒数
+         */
+        function performDowFlip(value, delayMs) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    // アニメーションなしで即座に設定するフラグはfalse (アニメーションが必要)
+                    flipDow(value, false); 
+                    prevDayOfWeekStr = value;
+                    resolve();
+                }, delayMs);
+            });
+        }
+
+        /**
+         * 曜日表示をフリップシーケンスに沿ってアニメーションさせます。(非同期処理でカクつきを解消)
+         * @param {string} targetDowStr 目的の曜日文字列 (例: "Wed")
+         * @param {boolean} isInitial 初回ロードかどうか
+         * @param {boolean} isLanguageSwitch 言語切り替えによる呼び出しであるか
+         */
+        async function animateDowTransition(targetDowStr, isInitial, isLanguageSwitch) {
+            if (isDowAnimating) return;
+
+            const currentDow3Char = prevDayOfWeekStr; 
+            const target3Char = targetDowStr;
+
+            // 初期化またはエラー時は即座にセットして終了
+            if (isInitial || !DOW_FLIP_SEQUENCE_3CHAR.includes(currentDow3Char) || !DOW_FLIP_SEQUENCE_3CHAR.includes(target3Char)) {
+                flipDow(target3Char, true);
+                prevDayOfWeekStr = target3Char;
+                return;
+            }
+
+            let currentIndex = DOW_FLIP_SEQUENCE_3CHAR.indexOf(currentDow3Char);
+            let targetIndex = DOW_FLIP_SEQUENCE_3CHAR.indexOf(target3Char);
+
+            const sequenceToAnimate = [];
+            let tempIndex = currentIndex;
+            
+            // 日付更新 (次の曜日に進む) のケース
+            const isSingleStep = !isLanguageSwitch && (
+                targetIndex === (currentIndex + 1) % DOW_FLIP_SEQUENCE_3CHAR.length ||
+                (currentIndex === DOW_FLIP_SEQUENCE_3CHAR.length - 1 && targetIndex === 0)
+            );
+
+            if (isSingleStep) {
+                // 日付更新時は、次の曜日のみフリップ (1ステップ)
+                sequenceToAnimate.push(target3Char);
+            } else {
+                // 言語切り替え時は、フリップシーケンス全体を経由して遷移
+                
+                // 1. 現在の言語のシーケンスの最後まで (土曜日/Sat)
+                const languageBoundary = dowLanguage === 'ja' ? 6 : DOW_FLIP_SEQUENCE_3CHAR.length - 1;
+                while (tempIndex !== languageBoundary) {
+                    tempIndex = (tempIndex + 1) % DOW_FLIP_SEQUENCE_3CHAR.length;
+                    sequenceToAnimate.push(DOW_FLIP_SEQUENCE_3CHAR[tempIndex]);
+                    if (tempIndex === DOW_FLIP_SEQUENCE_3CHAR.length - 1) break; // 英語の土曜日まで到達したらストップ
+                }
+                
+                // 2. 目標の曜日に到達するまで (ターゲット言語のシーケンス)
+                const startTargetLanguage = dowLanguage === 'ja' ? 0 : 7;
+                tempIndex = startTargetLanguage - 1; // 0 または 7 から開始
+                while (true) {
+                    tempIndex = (tempIndex + 1);
+                    const nextDow = DOW_FLIP_SEQUENCE_3CHAR[tempIndex % DOW_FLIP_SEQUENCE_3CHAR.length];
+                    sequenceToAnimate.push(nextDow);
+
+                    if (nextDow === target3Char) {
+                        break;
+                    }
+                    if (sequenceToAnimate.length > 20) break; // 無限ループ対策
+                }
+            }
+            
+            if (sequenceToAnimate.length === 0) return; 
+
+            isDowAnimating = true;
+            // アニメーションが完全に完了するのを待つための遅延時間 (CSSアニメーション時間 + わずかなバッファ)
+            const flipDelay = ANIMATION_DURATION + 50; 
+            
+            try {
+                // sequenceToAnimateを順番に処理し、各フリップが完了するのを待つ
+                for (const nextValue of sequenceToAnimate) {
+                    await performDowFlip(nextValue, flipDelay);
+                }
+            } catch (error) {
+                console.error("曜日フリップアニメーション中にエラーが発生しました:", error);
+            } finally {
+                // 全てのフリップが完了したらフラグをリセット
+                isDowAnimating = false;
+            }
+        }
+        
+        /**
+         * 3つの曜日フリップカードを同時にフリップさせるヘルパー関数。
+         * @param {string} dowStr 3文字の曜日文字列 (例: "(水)", "Wed")
+         * @param {boolean} isInitial アニメーションなしで即座に設定するかどうか
+         */
+        function flipDow(dowStr, isInitial) {
+            const chars = dowStr.split('');
+            if (chars.length !== 3) return;
+
+            // 各文字を個別のフリップカードに適用
+            flipCard(allDigits.dow.char1, chars[0], isInitial);
+            flipCard(allDigits.dow.char2, chars[1], isInitial);
+            flipCard(allDigits.dow.char3, chars[2], isInitial);
         }
 
         function flipCard(card, newValue, isInitial) {
@@ -862,6 +1122,7 @@
             const bottomFlip = card.querySelector('.bottom-flip span');
 
             if (isInitial) {
+                // アニメーションなしで即座に設定
                 top.textContent = newValue;
                 bottom.textContent = newValue;
                 topFlip.textContent = newValue;
@@ -870,17 +1131,25 @@
             }
 
             const currentValue = top.textContent;
+            // 新しい値が現在の値と同じ場合はフリップしない
+            if (currentValue === newValue) return;
+
+            // 1. 次の値と現在の値をフリップ要素にセット
             topFlip.textContent = currentValue; 
             bottomFlip.textContent = newValue;  
-            top.textContent = newValue; 
+            top.textContent = newValue; // topの最終的な値はnewValue
 
+            // 2. アニメーションをリセットし、再実行を強制
             card.classList.remove('flipping');
-            void card.offsetWidth;
+            // リフローを強制 (重要)
+            void card.offsetWidth; 
             card.classList.add('flipping');
 
+            // 3. アニメーション終了後にクラスをクリアし、底側の表示を確定
+            // ANIMATION_DURATIONの後に実行
             setTimeout(() => {
                 bottom.textContent = newValue;
-                topFlip.textContent = newValue; 
+                topFlip.textContent = newValue; // topFlipの値もnewValueに統一 (次のアニメーション準備)
                 card.classList.remove('flipping');
             }, ANIMATION_DURATION); 
         }
