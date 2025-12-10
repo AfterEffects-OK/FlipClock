@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -617,16 +618,9 @@
             prevDayOfWeekStr = initialDowStr;
             
             updateDisplay(true);
-            // 1秒ごとの更新。時刻モード切り替え中はスキップされる
-            // 1秒に満たない場合はsetTimeoutを使い、正確なタイミングで実行する
-            const updateLoop = () => {
-                updateDisplay(false);
-                const now = new Date();
-                const msUntilNextSecond = 1000 - now.getMilliseconds();
-                // 1秒に満たない場合はsetTimeoutを使い、正確なタイミングで実行する
-                setTimeout(updateLoop, msUntilNextSecond + 1); // +1msのバッファを追加
-            };
-            setTimeout(updateLoop, 1000 - new Date().getMilliseconds()); // 最初の実行を調整
+
+            // requestAnimationFrameを使ったメインループを開始
+            requestAnimationFrame(updateLoop);
             
             // Event Listeners for Time/Language
             btns.mode24.addEventListener('click', () => setMode(true));
@@ -653,6 +647,15 @@
             toggleSettingsBtn.addEventListener('click', toggleSettingsPanel);
         }
         
+        /**
+         * メインの更新ループ。requestAnimationFrameで呼び出されます。
+         */
+        function updateLoop() {
+            updateDisplay(false);
+            // 次のフレームで再度updateLoopを呼び出す
+            requestAnimationFrame(updateLoop);
+        }
+
         /**
          * 設定パネルの表示/非表示を切り替えます。
          */
