@@ -58,7 +58,7 @@
             --text-color: #1a1a1a;
         }
         .theme-light .date-separator, .theme-light .separator {
-            color: #ccc;
+            color: #555; /* 視認性向上のため色をさらに濃く */
         }
         .theme-light .group::after {
              color: #999;
@@ -72,6 +72,9 @@
             background: rgba(17, 17, 17, 0.6); /* 半透明の黒でクロックを読みやすく */
             border-color: rgba(51, 51, 51, 0.5);
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .theme-transparent .date-separator, .theme-transparent .separator {
+            color: #ccc; /* 透明テーマでの視認性向上 */
         }
 
         /* カスタム (Custom) テーマ */
@@ -104,7 +107,7 @@
         .date-separator {
             font-size: 1.2rem;
             font-weight: bold;
-            color: #444;
+            color: #999; /* 視認性向上のため色をさらに明るく */
             margin-left: -0.4rem; 
             margin-right: -0.4rem;
             transition: color 0.3s;
@@ -113,7 +116,7 @@
         /* Day of Week Group Container */
         .day-of-week-group {
             display: flex;
-            gap: 0.1rem;
+            gap: 0.2rem; /* 曜日間のスペースを少し広げる */
             padding-left: 0.5rem;
         }
 
@@ -195,7 +198,7 @@
             justify-content: center;
             font-size: 2rem;
             font-weight: bold;
-            color: #444;
+            color: #999; /* 視認性向上のため色をさらに明るく */
             padding-bottom: 1rem;
             margin-left: -0.4rem;
             margin-right: -0.4rem;
