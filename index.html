@@ -444,8 +444,48 @@
             min-width: 50px; /* 最小幅を確保 */
         }
         /* リセットボタンが改行しないようにする */
-        #reset-size {
+        #reset-size-btn {
             white-space: nowrap;
+        }
+
+        /* --- SLIDER STYLING --- */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .custom-slider {
+            position: relative;
+            flex: 1;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .slider-track {
+            position: absolute;
+            width: 100%;
+            background: #333;
+            height: 6px;
+            border-radius: 3px;
+            border: 1px solid #444;
+        }
+        .slider-thumb {
+            position: absolute;
+            background-color: #888; /* 視認性向上のため明るく */
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            border: 1px solid #aaa; /* 視認性向上のため明るく */
+        }
+        .theme-light .slider-track {
+            background: #e0e0e0;
+            border-color: #ccc;
+        }
+        .theme-light .slider-thumb {
+            background-color: #aaa; /* 視認性向上のため濃く */
+            border-color: #999; /* 視認性向上のため濃く */
         }
 
 
@@ -607,8 +647,11 @@
             <!-- Size Controls (New Section) -->
             <div class="size-controls">
                 <label for="size-slider">サイズ</label>
-                <input type="range" id="size-slider" min="0.2" max="5.0" step="0.05" value="1" aria-label="時計のサイズ">
-                <button class="btn btn-action" id="reset-size">リセット</button>
+                <div class="custom-slider" id="size-slider">
+                    <div class="slider-track"></div>
+                    <div class="slider-thumb"></div>
+                </div>
+                <button class="btn btn-action" id="reset-size-btn">リセット</button>
             </div>
         </div>
     </div>
@@ -650,8 +693,8 @@
             langEn: document.getElementById('lang-en'),
             themeBtns: document.querySelectorAll('.theme-btn'), 
             customColorPicker: document.getElementById('custom-color-picker'),
-            sizeSlider: document.getElementById('size-slider'),
-            resetSizeBtn: document.getElementById('reset-size'),
+            sizeSlider: document.getElementById('size-slider'), // コンテナDIV
+            resetSizeBtn: document.getElementById('reset-size-btn'),
         };
         
         // Define objects to store DOM elements for better code structure
@@ -729,8 +772,8 @@
             toggleSettingsBtn.addEventListener('click', toggleSettingsPanel);
 
             // サイズ調整用のイベントリスナー
-            btns.sizeSlider.addEventListener('input', handleSizeChange);
             btns.resetSizeBtn.addEventListener('click', resetSize);
+            initCustomSlider();
         }
         
         /**
@@ -747,21 +790,19 @@
          * localStorageから設定を読み込み、適用します。
          */
  function loadSettings() {
-            const savedTheme = localStorage.getItem('flipClockTheme') || 'dark';
-            const savedColor = localStorage.getItem('flipClockCustomColor');
-            const savedScale = parseFloat(localStorage.getItem('flipClockScale')) || 1.0;
+            currentTheme = localStorage.getItem('flipClockTheme') || 'dark';
+            const customColor = localStorage.getItem('flipClockCustomColor');
+            clockScale = parseFloat(localStorage.getItem('flipClockScale')) || 1.0;
 
-            currentTheme = savedTheme;
-            clockScale = savedScale;
-
-            if (savedColor) {
-                btns.customColorPicker.value = savedColor;
+            if (customColor) {
+                btns.customColorPicker.value = customColor;
             }
 
-            // スライダーの初期位置を設定
-            btns.sizeSlider.value = clockScale;
             // CSS変数を更新してサイズを適用
             timeWrapper.style.setProperty('--clock-scale', clockScale);
+
+            // カスタムスライダーの位置を更新
+            updateSliderThumbPosition(clockScale);
         }
 
         /**
@@ -865,13 +906,77 @@
         }
 
         /**
-         * スライダーの変更をハンドルし、時計のサイズを更新します。
+         * カスタムスライダーの初期化とイベントリスナーの設定
          */
-        function handleSizeChange(event) {
-            clockScale = parseFloat(event.target.value);
+        function initCustomSlider() {
+            const slider = btns.sizeSlider;
+            const thumb = slider.querySelector('.slider-thumb');
+            let isDragging = false;
+
+            const updateScaleFromPosition = (clientX) => {
+                const rect = slider.getBoundingClientRect();
+                const min = 0.2;
+                const max = 5.0;
+                
+                let position = (clientX - rect.left) / rect.width;
+                position = Math.max(0, Math.min(1, position)); // 0-1の範囲にクランプ
+
+                clockScale = min + (max - min) * position;
+                updateClockScale();
+            };
+
+            slider.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                thumb.style.transition = 'none'; // ドラッグ中はトランジションを無効化
+                updateScaleFromPosition(e.clientX);
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    updateScaleFromPosition(e.clientX);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    thumb.style.transition = ''; // トランジションを元に戻す
+                    saveSettings();
+                }
+            });
+        }
+
+        /**
+         * スケール値に基づいて時計の表示を更新します。
+         */
+        function updateClockScale() {
             timeWrapper.style.setProperty('--clock-scale', clockScale);
-            updateSettingsPanelPosition(); // スケール変更時にパネル位置を更新
-            saveSettings();
+            updateSliderThumbPosition(clockScale);
+            updateSettingsPanelPosition();
+        }
+
+        /**
+         * スケール値に基づいてスライダーのつまみの位置を更新します。
+         * @param {number} scale - 現在のスケール値
+         */
+        function updateSliderThumbPosition(scale) {
+            const slider = btns.sizeSlider;
+            const thumb = slider.querySelector('.slider-thumb');
+            const min = 0.2;
+            const max = 5.0;
+
+            // スケール値から0-1の割合を計算
+            const percentage = (scale - min) / (max - min);
+            
+            // つまみの幅を考慮して位置を計算
+            const thumbWidth = thumb.offsetWidth;
+            const trackWidth = slider.offsetWidth;
+            const position = percentage * (trackWidth - thumbWidth);
+            
+            // trackWidthが0の場合にNaNになるのを防ぐ
+            if (!isFinite(position)) return;
+
+            thumb.style.left = `${position}px`;
         }
 
         /**
@@ -879,12 +984,14 @@
          */
         function resetSize() {
             clockScale = 1.0;
-            btns.sizeSlider.value = clockScale;
             // トランジションを追加して滑らかにリセット
             timeWrapper.style.transition = 'transform 0.3s ease-in-out';
-            timeWrapper.style.setProperty('--clock-scale', clockScale);
-            updateSettingsPanelPosition(); // スケール変更時にパネル位置を更新
+            updateClockScale();
             saveSettings();
+            // トランジションが終わった後に元に戻す
+            setTimeout(() => {
+                timeWrapper.style.transition = 'background 0.3s, border-color 0.3s, box-shadow 0.3s';
+            }, 300);
         }
 
         /**
