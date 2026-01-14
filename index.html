@@ -5,540 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Retro Flip Clock</title>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;700&display=swap');
-
-        :root {
-            --bg-color: #1a1a1a; /* クロックカードの背景色 */
-            --body-bg: var(--bg-color); /* <body>の背景色として利用 */
-            --card-bg: #2c2c2c;
-            --text-color: #e0e0e0;
-            --font-family: 'Roboto Mono', monospace;
-            --border-radius: 6px;
-            --clock-padding: 2rem;
-            --flip-duration-normal: 0.5s; /* 通常の時刻更新時のフラップ時間 */
-            --flip-duration-fast: 0.18s;  /* 時刻形式切り替え時の高速フラップ時間 */
-        }
-
-        body {
-            /* 常に変数を参照し、JSでテーマに応じて変更する */
-            background-color: var(--body-bg); 
-            color: var(--text-color);
-            font-family: var(--font-family);
-            overflow: hidden;
-            height: 100vh;
-            margin: 0;
-            transition: background-color 0.3s; /* 背景色変更時のトランジション */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center; /* コンテナを中央に配置 */
-        }
-
-        .clock-and-settings-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative; /* .top-controls の基準とならないように */
-        }
-        
-        /* ------------------------------------------- */
-        /* テーマクラス: bodyに適用されます */
-        /* ------------------------------------------- */
-        
-        /* 白 (Light) テーマ */
-        .theme-light {
-            --body-bg: #f5f5f5; /* 白系の背景色 */
-            --text-color: #333; /* 全体の文字色を濃く */
-        }
-        .theme-light .time-wrapper {
-            background: #fff;
-            border-color: #ddd;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        /* カード内部の色を反転 */
-        .theme-light .card {
-            --card-bg: #eee;
-            --text-color: #1a1a1a;
-        }
-        .theme-light .date-separator, .theme-light .separator {
-            color: #555; /* 視認性向上のため色をさらに濃く */
-        }
-        .theme-light .group::after {
-             color: #999;
-        }
-
-        /* 透明 (Transparent) テーマ */
-        .theme-transparent {
-            --body-bg: transparent; /* 透明 */
-        }
-        .theme-transparent .time-wrapper {
-            background: rgba(17, 17, 17, 0.6); /* 半透明の黒でクロックを読みやすく */
-            border-color: rgba(51, 51, 51, 0.5);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .theme-transparent .date-separator, .theme-transparent .separator {
-            color: #ccc; /* 透明テーマでの視認性向上 */
-        }
-
-        /* カスタム (Custom) テーマ */
-        .theme-custom {
-            /* JSで--body-bgを設定します */
-        }
-
-        /* Main Container for Date and Clock */
-        .time-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: #111;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            border: 1px solid #333;
-            padding: var(--clock-padding);
-            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
-            z-index: 1; /* ボタン類との重なり順を制御 */
-            transform: scale(var(--clock-scale, 1)); /* ★ サイズ調整用のscaleを追加 */
-            transform-origin: center center; /* ★ 中央を基点に拡大・縮小 */
-        }
-
-        /* Date Display Styling (Smaller Flip Cards) */
-        .date-display {
-            display: flex;
-            gap: 0.8rem;
-            margin-bottom: 1.5rem;
-            padding: 0 0.5rem;
-            align-items: center;
-        }
-
-        .date-separator {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #999; /* 視認性向上のため色をさらに明るく */
-            margin-left: -0.4rem; 
-            margin-right: -0.4rem;
-            transition: color 0.3s;
-        }
-
-        /* Day of Week Group Container */
-        .day-of-week-group {
-            display: flex;
-            gap: 0.2rem; /* 曜日間のスペースを少し広げる */
-            padding-left: 0.5rem;
-        }
-
-        /* Day of Week Card Styling */
-        .card.dow-digit {
-            width: 25px;
-            height: 38px;
-            font-size: 1.5rem;
-        }
-        
-        @media (min-width: 768px) {
-            .date-display {
-                gap: 1.2rem;
-                margin-bottom: 2rem;
-                padding: 0 1rem;
-            }
-            .date-separator {
-                font-size: 2rem;
-                margin-left: -0.4rem;
-                margin-right: -0.4rem;
-            }
-            .day-of-week-group {
-                gap: 0.2rem;
-                padding-left: 1rem;
-            }
-            .card.dow-digit {
-                width: 50px;
-                height: 75px;
-                font-size: 3rem;
-            }
-        }
-
-        /* Clock Container */
-        .clock {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        @media (min-width: 768px) {
-            .clock {
-                gap: 1.5rem;
-            }
-        }
-
-        /* Digit Group (e.g., 12 or 59) */
-        .group {
-            display: flex;
-            gap: 0.25rem;
-            position: relative;
-        }
-
-        /* Base Label Styling */
-        .group::after {
-            content: attr(data-label);
-            position: absolute;
-            font-size: 0.6rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #666;
-            font-weight: 500;
-            left: 50%;
-            transform: translateX(-50%);
-            transition: color 0.3s;
-        }
-
-        /* Date Labels (Top) */
-        .date-display .group::after { top: -1.5rem; }
-        @media (min-width: 768px) { .date-display .group::after { top: -2rem; } }
-
-        /* Clock Labels (Bottom) */
-        .clock .group::after { bottom: -1.5rem; }
-        @media (min-width: 768px) { .clock .group::after { bottom: -2rem; } }
-
-
-        /* Separator (:) */
-        .separator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            font-weight: bold;
-            color: #999; /* 視認性向上のため色をさらに明るく */
-            padding-bottom: 1rem;
-            margin-left: -0.4rem;
-            margin-right: -0.4rem;
-            transition: color 0.3s;
-        }
-        
-        @media (min-width: 768px) {
-            .separator {
-                font-size: 4rem;
-                margin-left: -1rem;
-                margin-right: -1rem;
-            }
-        }
-
-        /* Individual Flip Card (Base Styling) */
-        .card {
-            position: relative;
-            perspective: 500px;
-            font-weight: 700;
-            text-align: center;
-            background-color: var(--card-bg); /* 変数を参照 */
-            border-radius: var(--border-radius);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            line-height: 1.2;
-            transition: background-color 0.3s, box-shadow 0.3s;
-        }
-
-        /* Card Size for TIME digits (Default) */
-        .card.time-digit { width: 40px; height: 60px; font-size: 2.5rem; }
-        @media (min-width: 768px) { .card.time-digit { width: 80px; height: 120px; font-size: 5rem; } }
-
-        /* Card Size for DATE digits (Smaller) */
-        .card.date-digit { width: 25px; height: 38px; font-size: 1.5rem; }
-        @media (min-width: 768px) { .card.date-digit { width: 50px; height: 75px; font-size: 3rem; } }
-
-        /* Top and Bottom Halves */
-        .top, .bottom, .top-flip, .bottom-flip {
-            position: absolute;
-            left: 0;
-            width: 100%;
-            height: 50%;
-            overflow: hidden;
-            background-color: var(--card-bg); /* 変数を参照 */
-            color: var(--text-color); /* 変数を参照 */
-            backface-visibility: hidden;
-            -webkit-backface-visibility: hidden;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        .top, .top-flip { top: 0; border-top-left-radius: var(--border-radius); border-top-right-radius: var(--border-radius); transform-origin: 50% 100%; }
-        .bottom, .bottom-flip { bottom: 0; border-bottom-left-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); transform-origin: 50% 0; }
-
-        /* Positioning the text inside the halves */
-        .top span, .bottom span, .top-flip span, .bottom-flip span {
-            position: absolute; left: 0; width: 100%; height: 200%;
-            display: flex; align-items: center; justify-content: center;
-            box-sizing: border-box; transform: none;
-        }
-        .top span, .top-flip span { top: 0; }
-        .bottom span, .bottom-flip span { bottom: 0; }
-
-        /* Visual styling for the cards */
-        .top::after, .top-flip::after {
-            content: '';
-            position: absolute;
-            bottom: 0; left: 0; width: 100%; height: 1px;
-            background-color: rgba(0,0,0,0.4); /* Split line */
-        }
-
-        /* Animation Classes */
-        .top-flip { z-index: 2; transform: rotateX(0deg); }
-        .bottom-flip { z-index: 1; transform: rotateX(180deg); } /* 修正: 180degが正しい */
-        .card.flipping .top-flip { z-index: 3; animation: flip-top var(--flip-duration) ease-in-out forwards; }
-        .card.flipping .bottom-flip { z-index: 4; animation: flip-bottom var(--flip-duration) ease-in-out forwards; }
-        
-        @keyframes flip-top { from { transform: rotateX(0deg); } to { transform: rotateX(-180deg); } }
-        @keyframes flip-bottom { from { transform: rotateX(180deg); } to { transform: rotateX(0deg); } }
-
-        /* ------------------------------------------- */
-        /* 設定パネルとボタンのレイアウト */
-        /* ------------------------------------------- */
-        .top-controls {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            display: flex;
-            gap: 0.5rem;
-            z-index: 10; /* time-wrapperより手前に表示 */
-        }
-        
-        .settings-panel {
-            /* 初期状態は非表示 */
-            opacity: 0;
-            position: relative; /* z-indexを有効にするため */
-            z-index: 10; /* time-wrapperより手前に表示 */
-            visibility: hidden; /* 初期状態は非表示 */
-            max-height: 0;
-            margin-top: 0;
-            padding: 0 1rem;
-            transition: opacity 0.3s ease, visibility 0.3s ease, max-height 0.3s ease, margin-top 0.3s ease;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .settings-panel.open {
-            opacity: 1;
-            visibility: visible;
-            max-height: 300px; /* パネルの内容に合わせて適切な値を設定 */
-            margin-top: 1.5rem; /* 時計とのマージン */
-        }
-
-        /* 内部のコントロールグループ */
-        .controls, .theme-controls {
-            display: flex;
-            gap: 0.5rem; /* ボタン間の間隔を調整 */
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .theme-controls {
-            margin-top: 0.5rem;
-            padding-bottom: 0.5rem;
-        }
-
-        /* --- CONTROL BUTTON STYLING --- */
-        .btn {
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #999; 
-            padding: 0.4rem 0.8rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: var(--font-family);
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem; 
-            font-size: 0.8rem; 
-        }
-
-        /* 歯車/フルスクリーンアイコン用の大きなボタン */
-        .btn-icon {
-            border: none;
-            background: rgba(0, 0, 0, 0.2);
-            color: #ccc;
-            padding: 0.7rem;
-            border-radius: 50%;
-            font-size: 1rem;
-        }
-        .btn-icon:hover {
-            background: rgba(0, 0, 0, 0.4);
-            color: var(--text-color);
-        }
-
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.05); 
-            border-color: rgba(255, 255, 255, 0.2);
-            color: var(--text-color);
-        }
-
-        .btn.active {
-            background: #444; 
-            color: var(--text-color); 
-            border-color: #555;
-            font-weight: 500;
-        }
-        
-        /* アクションボタン用のスタイル (リセットなど) */
-        .btn-action {
-            background: #333;
-            border-color: #444;
-            color: #ccc;
-        }
-        
-        /* ------------------------------------------- */
-        /* 白テーマ時のボタンのスタイルオーバーライド */
-        /* ------------------------------------------- */
-        .theme-light .btn {
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            color: #aaa; 
-        }
-        
-        .theme-light .btn-icon {
-            background: rgba(255, 255, 255, 0.8);
-            color: #666;
-            border: 1px solid #ddd;
-        }
-        .theme-light .btn-icon:hover {
-            background: rgba(255, 255, 255, 1);
-            color: #333;
-        }
-
-        .theme-light .btn:hover {
-            background: #ddd; 
-            border-color: #ccc;
-            color: #333;
-        }
-
-        .theme-light .btn.active {
-            background: #ccc; 
-            color: #333; 
-            border-color: #bbb;
-        }
-        
-        .theme-light .btn-action {
-            background: #e0e0e0;
-            border-color: #ccc;
-            color: #555;
-        }
-        /* ------------------------------------------- */
-        
-        /* --- SIZE CONTROL STYLING --- */
-        .size-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-top: 0.75rem;
-            padding: 0.5rem 1rem;
-            width: 100%;
-            max-width: 620px; /* スライダーをさらに長くするために幅を広げる */
-            justify-content: center;
-        }
-        .size-controls label {
-            font-size: 0.8rem;
-            color: #999;
-            white-space: nowrap;
-        }
-        .theme-light .size-controls label {
-            color: #666;
-        }
-        .size-controls input[type="range"] {
-            flex: 1; /* 残りのスペースをすべて使う */
-            min-width: 50px; /* 最小幅を確保 */
-        }
-        /* リセットボタンが改行しないようにする */
-        #reset-size-btn {
-            white-space: nowrap;
-        }
-
-        /* --- SLIDER STYLING --- */
-        input[type="range"] {
-            -webkit-appearance: none;
-            appearance: none;
-            cursor: pointer;
-        }
-
-        .custom-slider {
-            position: relative;
-            flex: 1;
-            height: 18px;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-        }
-        .slider-track {
-            position: absolute;
-            width: 100%;
-            background: #333;
-            height: 6px;
-            border-radius: 3px;
-            border: 1px solid #444;
-        }
-        .slider-thumb {
-            position: absolute;
-            background-color: #888; /* 視認性向上のため明るく */
-            height: 18px;
-            width: 18px;
-            border-radius: 50%;
-            border: 1px solid #aaa; /* 視認性向上のため明るく */
-        }
-        .theme-light .slider-track {
-            background: #e0e0e0;
-            border-color: #ccc;
-        }
-        .theme-light .slider-thumb {
-            background-color: #aaa; /* 視認性向上のため濃く */
-            border-color: #999; /* 視認性向上のため濃く */
-        }
-
-
-        /* Custom Color Picker Styling */
-        .custom-color-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            padding: 0 0.5rem 0 0.2rem;
-        }
-        
-        /* 白テーマ時のカスタムカラーグループの境界線 */
-        .theme-light .custom-color-group {
-             border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .custom-color-group input[type="color"] {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            border: none;
-            width: 30px;
-            height: 30px;
-            padding: 0;
-            background: none;
-            cursor: pointer;
-        }
-        .custom-color-group input[type="color"]::-webkit-color-swatch-wrapper {
-            padding: 0;
-        }
-        .custom-color-group input[type="color"]::-webkit-color-swatch {
-            border: 1px solid #999;
-            border-radius: 3px;
-        }
-
-        .footer-text {
-            position: absolute;
-            bottom: 1rem;
-            color: #444;
-            font-size: 0.7rem;
-        }
-        
-        /* Glare effect on cards for realism */
-        .top::before, .top-flip::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
-        }
-
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -555,6 +29,8 @@
     </div>
 
     <div class="clock-and-settings-container">
+        <!-- Content Row: Clock and Weather -->
+        <div class="content-row" id="content-row">
         <div class="time-wrapper">
             <!-- Date Display -->
             <div class="date-display">
@@ -613,936 +89,177 @@
                 </div>
             </div>
         </div>
-        
-        <!-- 設定パネル (初期非表示) -->
-        <div class="settings-panel" id="settings-panel">
-            <div class="controls">
-                <!-- Time Mode Controls -->
-                <button class="btn active" id="mode-24">24H</button>
-                <button class="btn" id="mode-12">12H</button>
 
-                <!-- Separator -->
-                <span class="text-sm text-gray-400 mx-2">|</span>
+        <!-- Weather Widget -->
+        <div class="weather-scope dark" id="weather-widget-container">
+            <!-- Refresh Button (Fixed position relative to container) -->
+            <button id="refreshBtn" class="absolute right-2 z-10 p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+            </button>
 
-                <!-- Day of Week Language Selection Controls -->
-                <button class="btn active" id="lang-ja">日本語</button>
-                <button class="btn" id="lang-en">English</button>
-            </div>
-            
-            <!-- Theme Controls (New Section) -->
-            <div class="theme-controls">
-                <button class="btn active theme-btn" data-theme="dark" id="theme-dark">黒</button>
-                <button class="btn theme-btn" data-theme="light" id="theme-light">白</button>
-                <button class="btn theme-btn" data-theme="transparent" id="theme-transparent">透明</button>
-                
-                <!-- Separator -->
-                <span class="text-sm text-gray-400 mx-2">|</span>
+            <div class="carousel-wrapper">
+                <div class="carousel-track" id="carousel-track">
+                    <!-- Slide 0: Weather -->
+                    <div class="carousel-slide" id="slide-weather" data-icon="fas fa-cloud-sun">
+                        <!-- Status display -->
+                        <div id="loading" class="hidden text-center py-20">
+                            <div class="text-2xl font-black text-slate-300 dark:text-slate-700 loading-dots">FETCHING</div>
+                        </div>
 
-                <div class="custom-color-group">
-                    <input type="color" id="custom-color-picker" value="#3a3a3a">
-                    <button class="btn theme-btn" data-theme="custom" id="theme-custom" style="padding: 0.4rem 0.8rem;">カスタム</button>
+                        <div id="errorMessage" class="hidden text-center p-6 bg-white dark:bg-slate-900 rounded-xl text-red-400 font-bold uppercase tracking-widest text-sm">
+                            Connection Error
+                        </div>
+
+                        <div id="weather-content" class="space-y-1">
+                            <!-- Today's Main Widget -->
+                            <div id="todayCard"></div>
+                            
+                            <!-- 5-Day Forecast List Container -->
+                            <div>
+                                <div id="forecastList" class="space-y-1"></div>
+                                <!-- Last Sync Info -->
+                                <div id="syncTime" class="text-center text-[9px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em] mt-1 pb-2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide 1: RSS News -->
+                    <div class="carousel-slide" id="slide-rss" data-icon="fas fa-newspaper">
+                        <div id="rss-loading" class="hidden text-center py-20">
+                            <div class="text-2xl font-black text-slate-300 dark:text-slate-700 loading-dots">NEWS</div>
+                        </div>
+                        <div id="rss-error" class="hidden text-center p-6 text-red-400 font-bold uppercase tracking-widest text-sm">
+                            Feed Error
+                        </div>
+                        <div id="rss-content">
+                            <!-- List View -->
+                            <div id="rss-list-view" class="h-full flex flex-col">
+                                <div class="minimal-card p-2 px-3 mb-0 flex flex-col items-center shrink-0">
+                                    <div class="text-[10px] font-[900] opacity-80 tracking-[0.6em] uppercase text-center w-full ml-[0.6em]">NEWS</div>
+                                </div>
+                                <div id="rss-list" class="flex-1 space-y-1"></div>
+                            </div>
+
+                            <!-- Detail View -->
+                            <div id="rss-detail-view" class="hidden absolute inset-0 bg-[var(--weather-bg)] z-10 flex flex-col h-full">
+                                <div class="minimal-card py-0 px-2 mb-0 flex items-center shrink-0">
+                                     <button id="rss-back-btn" class="mr-3 text-slate-400 hover:text-blue-500 transition-colors p-0.5">
+                                        <i class="fas fa-arrow-left text-xs"></i>
+                                     </button>
+                                     <div class="text-[10px] font-[900] opacity-80 tracking-[0.6em] uppercase text-center flex-1 mr-6">TOPIC</div>
+                                </div>
+                                <div class="minimal-card p-3 flex-1 flex flex-col overflow-hidden relative">
+                                    <div class="flex-1 overflow-y-auto scrollbar-hide pb-20">
+                                        <div id="rss-detail-title" class="text-sm font-black mb-1 leading-snug"></div>
+                                        <div id="rss-detail-date" class="text-[10px] text-slate-400 mb-1 border-b border-slate-100 dark:border-slate-800 pb-1"></div>
+                                        <div id="rss-detail-desc" class="text-xs opacity-90 leading-relaxed whitespace-pre-wrap font-medium"></div>
+                                        <div class="mt-4 mb-2 text-center">
+                                            <a id="rss-detail-link" href="#" target="_blank" class="inline-block px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold text-blue-500 hover:text-blue-600 transition-colors">Read Article</a>
+                                        </div>
+                                    </div>
+                                    <img id="rss-detail-qr" class="absolute bottom-3 right-3 w-14 h-14 bg-white p-1 rounded-md shadow-sm z-20" alt="QR Code">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide 2: Settings -->
+                    <div class="carousel-slide" id="slide-settings" data-icon="fas fa-cog">
+                        <div class="h-full flex flex-col">
+                             <div class="minimal-card p-2 px-3 mb-0 flex flex-col items-center shrink-0">
+                                <div class="text-[10px] font-[900] opacity-80 tracking-[0.6em] uppercase text-center w-full ml-[0.6em]">SETTINGS</div>
+                            </div>
+                            <div class="flex-1 overflow-y-auto p-1 space-y-2 scrollbar-hide">
+                                <!-- Group 1: Clock Settings -->
+                                <div class="minimal-card p-3 flex flex-col gap-2">
+                                    <div class="text-[10px] font-bold opacity-60 mb-1">CLOCK</div>
+                                    <div class="controls justify-between w-full">
+                                        <button class="btn active flex-1 justify-center" id="mode-24">24H</button>
+                                        <button class="btn flex-1 justify-center" id="mode-12">12H</button>
+                                    </div>
+                                    <div class="controls justify-between w-full">
+                                        <button class="btn active flex-1 justify-center" id="lang-ja">日本語</button>
+                                        <button class="btn flex-1 justify-center" id="lang-en">English</button>
+                                    </div>
+                                </div>
+
+                                <!-- Group 2: Theme -->
+                                <div class="minimal-card p-3 flex flex-col gap-2">
+                                    <div class="text-[10px] font-bold opacity-60 mb-1">THEME</div>
+                                    <div class="theme-controls justify-between w-full p-0 m-0">
+                                        <button class="btn active theme-btn flex-1 justify-center" data-theme="dark" id="theme-dark">黒</button>
+                                        <button class="btn theme-btn flex-1 justify-center" data-theme="light" id="theme-light">白</button>
+                                        <button class="btn theme-btn flex-1 justify-center" data-theme="transparent" id="theme-transparent">透明</button>
+                                    </div>
+                                    <div class="custom-color-group w-full">
+                                        <input type="color" id="custom-color-picker" value="#3a3a3a">
+                                        <button class="btn theme-btn flex-1 justify-center" data-theme="custom" id="theme-custom">カスタム</button>
+                                    </div>
+                                </div>
+
+                                <!-- Group 3: Weather/RSS -->
+                                <div class="minimal-card p-3 flex flex-col gap-2">
+                                    <div class="text-[10px] font-bold opacity-60 mb-1">AREA & RSS</div>
+                                    <div class="weather-controls w-full m-0">
+                                        <select id="areaSelect" class="settings-select w-full max-w-none">
+                                            <optgroup label="Hokkaido & Tohoku"><option value="016000">HOKKAIDO</option><option value="020000">AOMORI</option><option value="030000">IWATE</option><option value="040000">MIYAGI</option><option value="050000">AKITA</option><option value="060000">YAMAGATA</option><option value="070000">FUKUSHIMA</option></optgroup>
+                                            <optgroup label="Kanto"><option value="080000">IBARAKI</option><option value="090000">TOCHIGI</option><option value="100000">GUNMA</option><option value="110000">SAITAMA</option><option value="120000">CHIBA</option><option value="130000" selected>TOKYO</option><option value="140000">KANAGAWA</option></optgroup>
+                                            <optgroup label="Chubu"><option value="150000">NIIGATA</option><option value="160000">TOYAMA</option><option value="170000">ISHIKAWA</option><option value="180000">FUKUI</option><option value="190000">YAMANASHI</option><option value="200000">NAGANO</option><option value="210000">GIFU</option><option value="220000">SHIZUOKA</option><option value="230000">AICHI</option></optgroup>
+                                            <optgroup label="Kansai"><option value="240000">MIE</option><option value="250000">SHIGA</option><option value="260000">KYOTO</option><option value="270000">OSAKA</option><option value="280000">HYOGO</option><option value="290000">NARA</option><option value="300000">WAKAYAMA</option></optgroup>
+                                            <optgroup label="Chugoku"><option value="310000">TOTTORI</option><option value="320000">SHIMANE</option><option value="330000">OKAYAMA</option><option value="340000">HIROSHIMA</option><option value="350000">YAMAGUCHI</option></optgroup>
+                                            <optgroup label="Shikoku"><option value="360000">TOKUSHIMA</option><option value="370000">KAGAWA</option><option value="380000">EHIME</option><option value="390000">KOCHI</option></optgroup>
+                                            <optgroup label="Kyushu & Okinawa"><option value="400000">FUKUOKA</option><option value="410000">SAGA</option><option value="420000">NAGASAKI</option><option value="430000">KUMAMOTO</option><option value="440000">OITA</option><option value="450000">MIYAZAKI</option><option value="460100">KAGOSHIMA</option><option value="471000">OKINAWA</option></optgroup>
+                                        </select>
+                                    </div>
+                                    <div class="weather-controls w-full m-0 flex-col items-start">
+                                        <label for="rss-url" style="font-size: 0.7rem; color: #999; margin-bottom: 0.2rem;">RSS URL</label>
+                                        <input type="text" id="rss-url" class="settings-input w-full" placeholder="https://...">
+                                    </div>
+                                </div>
+
+                                <!-- Group 4: Size -->
+                                <div class="minimal-card p-3 flex flex-col gap-2">
+                                    <div class="text-[10px] font-bold opacity-60 mb-1">SIZE</div>
+                                    <div class="size-controls w-full p-0 m-0 justify-between max-w-none">
+                                        <div class="custom-slider" id="size-slider">
+                                            <div class="slider-track"></div>
+                                            <div class="slider-thumb"></div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-action w-full justify-center mt-1" id="reset-size-btn">リセット</button>
+                                </div>
+                                
+                                <!-- Group 5: Plugins -->
+                                <div class="minimal-card p-3 flex flex-col gap-2">
+                                    <div class="text-[10px] font-bold opacity-60 mb-1">PLUGINS</div>
+                                    <div id="plugin-list" class="flex flex-col gap-1 mb-1"></div>
+                                    <div id="plugin-drop-zone" class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                        <div class="text-xs text-slate-400 pointer-events-none">
+                                            <i class="fas fa-cloud-upload-alt mb-1 text-lg"></i><br>
+                                            Drop .js file here
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-action w-full justify-center mt-1 text-xs" onclick="if(confirm('Delete all plugins?')) { localStorage.removeItem('flipClockUserPlugins'); location.reload(); }">Clear All Plugins</button>
+                                </div>
+
+                                <!-- Spacer for bottom scrolling -->
+                                <div class="h-4"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Size Controls (New Section) -->
-            <div class="size-controls">
-                <label for="size-slider">サイズ</label>
-                <div class="custom-slider" id="size-slider">
-                    <div class="slider-track"></div>
-                    <div class="slider-thumb"></div>
-                </div>
-                <button class="btn btn-action" id="reset-size-btn">リセット</button>
-            </div>
+            <!-- Pagination Dots -->
+            <div class="carousel-dots" id="carousel-dots"></div>
         </div>
+        </div> <!-- End of content-row -->
     </div>
 
     <div class="footer-text">RETRO FLIP CLOCK</div>
 
-    <script>
-        // State
-        let is24Hour = true;
-        let prevTimeStr = "000000";
-        let prevDateStr = "000000";
-        let prevDayOfWeekStr = "(日)";
-        let dowLanguage = 'ja';
-        let clockScale = 1.0;
-        let currentTheme = 'dark'; 
-        let isSettingsOpen = false; 
-        let initialPinchDistance = 0; // for pinch zoom
-        let initialPinchScale = 1.0; // for pinch zoom
-        // アニメーション関連の定数 (CSSから取得)
-        const FLIP_DURATION_NORMAL_MS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration-normal')) * 1000;
-        const FLIP_DURATION_FAST_MS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration-fast')) * 1000;
-        const HOUR_FLIP_DELAY_MS = FLIP_DURATION_FAST_MS + 40; // 高速フリップ時間 + バッファ
-        let isDowAnimating = false; // 曜日フリップアニメーションの実行中フラグ
-        let isTimeModeAnimating = false; // 時刻モード切り替えアニメーションの実行中フラグ
-        const DOW_FLIP_SEQUENCE_3CHAR = [
-            '(日)', '(月)', '(火)', '(水)', '(木)', '(金)', '(土)', // 日本語
-            'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'      // 英語
-        ];
-
-
-        // DOM Elements
-        const body = document.body;
-        const settingsPanel = document.getElementById('settings-panel');
-        const timeWrapper = document.querySelector('.time-wrapper');
-        const toggleSettingsBtn = document.getElementById('toggle-settings');
-        
-        const btns = {
-            mode24: document.getElementById('mode-24'),
-            mode12: document.getElementById('mode-12'),
-            langJa: document.getElementById('lang-ja'),
-            langEn: document.getElementById('lang-en'),
-            themeBtns: document.querySelectorAll('.theme-btn'), 
-            customColorPicker: document.getElementById('custom-color-picker'),
-            sizeSlider: document.getElementById('size-slider'), // コンテナDIV
-            resetSizeBtn: document.getElementById('reset-size-btn'),
-        };
-        
-        // Define objects to store DOM elements for better code structure
-        const allDigits = {
-            time: {
-                hTens: document.getElementById('h-tens'),
-                hOnes: document.getElementById('h-ones'),
-                mTens: document.getElementById('m-tens'),
-                mOnes: document.getElementById('m-ones'),
-                sTens: document.getElementById('s-tens'),
-                sOnes: document.getElementById('s-ones')
-            },
-            date: {
-                yTens: document.getElementById('d-year-tens'),
-                yOnes: document.getElementById('d-year-ones'),
-                mTens: document.getElementById('d-month-tens'),
-                mOnes: document.getElementById('d-month-ones'),
-                dTens: document.getElementById('d-day-tens'),
-                dOnes: document.getElementById('d-day-ones')
-            },
-            dow: {
-                char1: document.getElementById('dow-char1'),
-                char2: document.getElementById('dow-char2'),
-                char3: document.getElementById('dow-char3')
-            }
-        };
-
-        // Initialize
-        function init() {
-            // 保存された設定を読み込む
-            loadSettings();
-
-
-            // テーマとサイズを適用
-            setTheme(currentTheme);
-            
-            // 全てのカードの初期アニメーション速度を通常に設定
-            setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
-
-            // 初回表示時のみ、アニメーションなしで現在の曜日に設定
-            // また、設定パネルの位置を初期化
-            updateSettingsPanelPosition();
-
-            const initialDowStr = getDayOfWeek('ja');
-            flipDow(initialDowStr, true);
-            prevDayOfWeekStr = initialDowStr;
-            
-            updateDisplay(true);
-
-            // requestAnimationFrameを使ったメインループを開始
-            requestAnimationFrame(updateLoop);
-            
-            // Event Listeners for Time/Language
-            btns.mode24.addEventListener('click', () => setMode(true));
-            btns.mode12.addEventListener('click', () => setMode(false));
-            btns.langJa.addEventListener('click', () => setDowLanguage('ja'));
-            btns.langEn.addEventListener('click', () => setDowLanguage('en'));
-            
-            // Event Listeners for Theme
-            btns.themeBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const theme = btn.getAttribute('data-theme');
-                    setTheme(theme);
-                });
-            });
-
-            // カスタムカラーピッカーの値が変更されたら、カスタムテーマを即時適用
-            btns.customColorPicker.addEventListener('input', () => {
-                if (currentTheme === 'custom') {
-                    setTheme('custom');
-                }
-            });
-            
-            // 設定パネルの開閉トグル
-            toggleSettingsBtn.addEventListener('click', toggleSettingsPanel);
-
-            // サイズ調整用のイベントリスナー
-            btns.resetSizeBtn.addEventListener('click', resetSize);
-            initCustomSlider();
-
-            // マウスホイールでのサイズ調整
-            timeWrapper.addEventListener('wheel', handleWheelScale);
-
-            // ピンチイン・アウトでのサイズ調整
-            timeWrapper.addEventListener('touchstart', handleTouchStart, { passive: false });
-            timeWrapper.addEventListener('touchmove', handleTouchMove, { passive: false });
-            timeWrapper.addEventListener('touchend', handleTouchEnd);
-        }
-        
-        /**
-         * すべてのフリップカードのアニメーション時間を設定します。
-         * @param {number} durationMs - アニメーション時間 (ミリ秒)
-         */
-        function setAllCardsAnimationDuration(durationMs) {
-            const durationS = `${durationMs / 1000}s`;
-            // :rootの--flip-duration変数を更新することで、すべてのカードに影響を与えます。
-            document.documentElement.style.setProperty('--flip-duration', durationS);
-        }
-
-        /**
-         * localStorageから設定を読み込み、適用します。
-         */
- function loadSettings() {
-            currentTheme = localStorage.getItem('flipClockTheme') || 'dark';
-            const customColor = localStorage.getItem('flipClockCustomColor');
-            clockScale = parseFloat(localStorage.getItem('flipClockScale')) || 1.0;
-
-            if (customColor) {
-                btns.customColorPicker.value = customColor;
-            }
-
-            // CSS変数を更新してサイズを適用
-            timeWrapper.style.setProperty('--clock-scale', clockScale);
-
-            // カスタムスライダーの位置を更新
-            updateSliderThumbPosition(clockScale);
-        }
-
-        /**
-         * 現在の設定をlocalStorageに保存します。
-         */
- function saveSettings() {
-            localStorage.setItem('flipClockTheme', currentTheme);
-            localStorage.setItem('flipClockScale', clockScale);
-        }
-
-        /**
-         * メインの更新ループ。requestAnimationFrameで呼び出されます。
-         */
-        function updateLoop() {
-            updateDisplay(false);
-            // 次のフレームで再度updateLoopを呼び出す
-            requestAnimationFrame(updateLoop);
-        }
-
-        /**
-         * 設定パネルの表示/非表示を切り替えます。
-         */
-        function toggleSettingsPanel() {
-            isSettingsOpen = !isSettingsOpen;
-            if (isSettingsOpen) {
-                settingsPanel.classList.add('open');
-                toggleSettingsBtn.querySelector('i').classList.replace('fa-cog', 'fa-times'); // 閉じるアイコンに変更
-                toggleSettingsBtn.setAttribute('aria-label', '設定を閉じる');
-            } else {
-                settingsPanel.classList.remove('open');
-                toggleSettingsBtn.querySelector('i').classList.replace('fa-times', 'fa-cog'); // 歯車アイコンに戻す
-                toggleSettingsBtn.setAttribute('aria-label', '設定を開く');
-            }
-            // パネルの開閉状態に応じてマージンを更新
-            updateSettingsPanelPosition();
-        }
-
-        /**
-         * 時計のスケールに合わせて設定パネルの位置を調整します。
-         */
-        function updateSettingsPanelPosition() {
-            // パネルが閉じていればマージンは不要
-            if (!isSettingsOpen) {
-                settingsPanel.style.marginTop = '0px';
-                return;
-            }
-
-            const baseMarginRem = 1.5; // .settings-panel.open の基本マージン
-            const remInPixels = parseFloat(getComputedStyle(document.documentElement).fontSize);
-            const baseMarginPixels = baseMarginRem * remInPixels;
-
-            const clockHeight = timeWrapper.offsetHeight;
-            const extraHeight = (clockHeight * clockScale - clockHeight) / 2;
-
-            settingsPanel.style.marginTop = `${baseMarginPixels + extraHeight}px`;
-        }
-
-        /**
-         * テーマを切り替え、bodyのクラスとカスタムCSS変数を更新します。
-         * @param {string} themeName 'dark', 'light', 'transparent', 'custom'
-         */
-        function setTheme(themeName) {
-            currentTheme = themeName;
-            
-            // 1. クラスの更新とボタンのアクティブ状態の設定
-            body.classList.remove('theme-light', 'theme-transparent', 'theme-custom'); 
-            btns.themeBtns.forEach(btn => btn.classList.remove('active'));
-
-            const activeButton = document.getElementById(`theme-${themeName}`);
-            if (activeButton) {
-                activeButton.classList.add('active');
-            } else if (themeName === 'custom') {
-                 document.getElementById('theme-custom').classList.add('active');
-            }
-
-            // CSS変数のリセット
-            document.documentElement.style.removeProperty('--body-bg');
-            document.documentElement.style.removeProperty('--text-color');
-
-
-            // 2. CSS変数とクラスの適用
-            switch(themeName) {
-                case 'dark':
-                    document.documentElement.style.setProperty('--body-bg', '#1a1a1a');
-                    document.documentElement.style.setProperty('--text-color', '#e0e0e0');
-                    break;
-                case 'light':
-                    body.classList.add('theme-light');
-                    break;
-                case 'transparent':
-                    body.classList.add('theme-transparent');
-                    break;
-                case 'custom':
-                    const color = btns.customColorPicker.value;
-                    body.classList.add('theme-custom');
-                    document.documentElement.style.setProperty('--body-bg', color);
-                    // 背景色に応じて文字色を自動変更する機能を削除
-                    break;
-            }
-            saveSettings();
-        }
-
-        /**
-         * カスタムスライダーの初期化とイベントリスナーの設定
-         */
-        function initCustomSlider() {
-            const slider = btns.sizeSlider;
-            const thumb = slider.querySelector('.slider-thumb');
-            let isDragging = false;
-
-            const updateScaleFromPosition = (clientX) => {
-                const rect = slider.getBoundingClientRect();
-                const min = 0.2;
-                const max = 5.0;
-                
-                let position = (clientX - rect.left) / rect.width;
-                position = Math.max(0, Math.min(1, position)); // 0-1の範囲にクランプ
-
-                clockScale = min + (max - min) * position;
-                updateClockScale();
-            };
-
-            slider.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                thumb.style.transition = 'none'; // ドラッグ中はトランジションを無効化
-                updateScaleFromPosition(e.clientX);
-            });
-
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    updateScaleFromPosition(e.clientX);
-                }
-            });
-
-            document.addEventListener('mouseup', () => {
-                if (isDragging) {
-                    isDragging = false;
-                    thumb.style.transition = ''; // トランジションを元に戻す
-                    saveSettings();
-                }
-            });
-        }
-
-        /**
-         * スケール値に基づいて時計の表示を更新します。
-         */
-        function updateClockScale() {
-            timeWrapper.style.setProperty('--clock-scale', clockScale);
-            updateSliderThumbPosition(clockScale);
-            updateSettingsPanelPosition();
-        }
-
-        /**
-         * スケール値に基づいてスライダーのつまみの位置を更新します。
-         * @param {number} scale - 現在のスケール値
-         */
-        function updateSliderThumbPosition(scale) {
-            const slider = btns.sizeSlider;
-            const thumb = slider.querySelector('.slider-thumb');
-            const min = 0.2;
-            const max = 5.0;
-
-            // スケール値から0-1の割合を計算
-            const percentage = (scale - min) / (max - min);
-            
-            // つまみの幅を考慮して位置を計算
-            const thumbWidth = thumb.offsetWidth;
-            const trackWidth = slider.offsetWidth;
-            const position = percentage * (trackWidth - thumbWidth);
-            
-            // trackWidthが0の場合にNaNになるのを防ぐ
-            if (!isFinite(position)) return;
-
-            thumb.style.left = `${position}px`;
-        }
-
-        /**
-         * 時計のサイズをデフォルトにリセットします。
-         */
-        function resetSize() {
-            clockScale = 1.0;
-            // トランジションを追加して滑らかにリセット
-            timeWrapper.style.transition = 'transform 0.3s ease-in-out';
-            updateClockScale();
-            saveSettings();
-            // トランジションが終わった後に元に戻す
-            setTimeout(() => {
-                timeWrapper.style.transition = 'background 0.3s, border-color 0.3s, box-shadow 0.3s';
-            }, 300);
-        }
-
-        /**
-         * マウスホイールで時計のサイズを調整します。
-         * @param {WheelEvent} event
-         */
-        function handleWheelScale(event) {
-            event.preventDefault(); // ページのスクロールを防止
-
-            const scaleStep = 0.05;
-            const min = 0.2;
-            const max = 5.0;
-
-            // ホイールを下にスクロールするとdeltaYは正、上にスクロールすると負
-            if (event.deltaY < 0) {
-                // 上にスクロール -> 拡大
-                clockScale += scaleStep;
-            } else {
-                // 下にスクロール -> 縮小
-                clockScale -= scaleStep;
-            }
-            clockScale = Math.max(min, Math.min(max, clockScale));
-            updateClockScale();
-            saveSettings();
-        }
-
-        /**
-         * 2点間の距離を計算します。
-         * @param {TouchList} touches
-         * @returns {number}
-         */
-        function getDistance(touches) {
-            const touch1 = touches[0];
-            const touch2 = touches[1];
-            return Math.sqrt(
-                Math.pow(touch2.clientX - touch1.clientX, 2) +
-                Math.pow(touch2.clientY - touch1.clientY, 2)
-            );
-        }
-
-        /**
-         * ピンチ操作の開始をハンドルします。
-         * @param {TouchEvent} event
-         */
-        function handleTouchStart(event) {
-            if (event.touches.length === 2) {
-                event.preventDefault(); // ページのズームを防止
-                initialPinchDistance = getDistance(event.touches);
-                initialPinchScale = clockScale;
-            }
-        }
-
-        /**
-         * ピンチ操作中の動きをハンドルします。
-         * @param {TouchEvent} event
-         */
-        function handleTouchMove(event) {
-            if (event.touches.length === 2) {
-                event.preventDefault(); // ページのスクロール/ズームを防止
-                const newDistance = getDistance(event.touches);
-                const scaleFactor = newDistance / initialPinchDistance;
-                
-                let newScale = initialPinchScale * scaleFactor;
-                newScale = Math.max(0.2, Math.min(5.0, newScale)); // 最小・最大値の範囲内に収める
-
-                clockScale = newScale;
-                updateClockScale();
-            }
-        }
-
-        /**
-         * ピンチ操作の終了をハンドルします。
-         * @param {TouchEvent} event
-         */
-        function handleTouchEnd(event) {
-            if (initialPinchDistance > 0) {
-                initialPinchDistance = 0;
-                saveSettings();
-            }
-        }
-
-        /**
-         * 指定されたモードとDateオブジェクトに基づいて時刻文字列を返します。
-         * @param {boolean} is24 - 24時間モードかどうか
-         * @param {Date} date - Dateオブジェクト
-         * @returns {string} 時刻文字列 (HHTTSS)
-         */
-        function getFormattedTimeString(is24, date = new Date()) {
-            let hours = date.getHours();
-            const minutes = date.getMinutes();
-            const seconds = date.getSeconds();
-
-            // getHourDisplayNumberを使用
-            hours = getHourDisplayNumber(is24, hours);
-
-            const hStr = String(hours).padStart(2, '0');
-            const mStr = String(minutes).padStart(2, '0');
-            const sStr = String(seconds).padStart(2, '0');
-
-            return hStr + mStr + sStr;
-        }
-        
-        /**
-         * 24時間表示(0-23)を、指定されたモード(12H:1-12, 24H:0-23)に対応する数値に変換します。
-         *
-         * 注: 12Hモードでは、00:xx (午前0時台) は '00' と表示されます。
-         * 12:xx (正午) は '12' と表示されます。
-         *
-         * @param {boolean} is24 - 24時間モードかどうか
-         * @param {number} hour24 - 現在の24時間表示の時 (0-23)
-         * @returns {number} 表示すべき時 (0-23)
-         */
-        function getHourDisplayNumber(is24, hour24) {
-             if (is24) {
-                 return hour24; // 0-23
-             } else {
-                 if (hour24 === 0) return 0; // 00:xx (午前0時台) は '00' を表示
-                 if (hour24 >= 13) {
-                     return hour24 - 12; // 午後 (13-23 -> 1-11)
-                 }
-                 return hour24; // 午前 (1-11) または正午 (12)
-             }
-        }
-
-        /**
-         * 時刻モードを切り替え、フリップアニメーションを起動します。
-         * @param {boolean} newIs24Hour - 新しいモードが24時間かどうか
-         */
-        async function setMode(newIs24Hour) {
-            if (isTimeModeAnimating) return; // アニメーション中は操作を無視
-            if (is24Hour === newIs24Hour) return; // モードが同じなら何もしない
-
-            const now = new Date();
-            const current24Hour = now.getHours(); // 0-23 (内部的な基準時間)
-
-            const oldIs24Hour = is24Hour; // 古いモードを保存
-            const targetModeIs24H = newIs24Hour; // 目標モードをローカルに保存
-            
-            // 1. UIの更新 (ボタンのアクティブ状態)
-            is24Hour = newIs24Hour;
-            btns.mode24.classList.remove('active');
-            btns.mode12.classList.remove('active');
-            if (is24Hour) {
-                btns.mode24.classList.add('active');
-            } else {
-                btns.mode12.classList.add('active');
-            }
-            
-            isTimeModeAnimating = true;
-            
-            // 2. アニメーションの開始点 (古いモードの表示値) をアニメーションなしでセット
-            //    および、アニメーション速度を高速に設定
-            setAllCardsAnimationDuration(FLIP_DURATION_FAST_MS);
-
-            const hTens = allDigits.time.hTens;
-            const hOnes = allDigits.time.hOnes; 
-            
-            const oldHourNumber = getHourDisplayNumber(oldIs24Hour, current24Hour); 
-            const oldHourStr = String(oldHourNumber).padStart(2, '0');
-            
-            // アニメーションの開始点を古い値に強制的に設定 (アニメーションなし)
-            flipCard(hTens, oldHourStr[0], true);
-            flipCard(hOnes, oldHourStr[1], true);
-            
-            
-            // 3. 循環アニメーションシーケンスの構築 (修正: 00:00で24H表示に切り替わり、次のステップでターゲットモードに切り替える)
-            const sequence = []; 
-            let hourToAnimate;
-            let displayFormatIs24H = oldIs24Hour; // 最初は古いモードのフォーマットを使用
-
-            // 現在の24Hの時 (0-23) からスタート
-            // 24ステップ回すことで必ず現在の時間に戻ってこれる
-            for (let i = 1; i <= 24; i++) { 
-                hourToAnimate = (current24Hour + i) % 24; // 24Hの値 (0-23)
-
-                let displayHourNumber;
-                
-                if (hourToAnimate === 0) {
-                    // 24Hの00:xxに到達した瞬間は、必ず 00 (24H形式) を表示する
-                    displayHourNumber = 0; 
-                    displayFormatIs24H = true; // 表示形式を24Hに強制
-                } else if (hourToAnimate === 1) {
-                    // 00:xxの次のステップ (01:xx) からターゲットモードのフォーマットに切り替える
-                    displayFormatIs24H = targetModeIs24H;
-                    displayHourNumber = getHourDisplayNumber(displayFormatIs24H, hourToAnimate);
-                } else {
-                    // それ以外の時間は、現在の displayFormatIs24H に従って表示する
-                    displayHourNumber = getHourDisplayNumber(displayFormatIs24H, hourToAnimate);
-                }
-                
-                const displayStr = String(displayHourNumber).padStart(2, '0');
-                sequence.push(displayStr);
-                
-                // 停止条件: ターゲットモードに切り替わった後、現在の24H時間に戻ったら停止
-                // ターゲットモードへの切り替えは hourToAnimate === 1 で発生するため、
-                // hourToAnimate >= 1 の時点で停止条件をチェックする
-                if (hourToAnimate === current24Hour && i > 12) { 
-                     // i > 12 は無限ループを防ぎ、最低12時間分フリップを保証するための措置
-                     break;
-                }
-            }
-
-            // 4. アニメーションの実行
-            await animateHourTransition(sequence, HOUR_FLIP_DELAY_MS);
-
-            // 5. アニメーション完了後、prevTimeStrを新しい状態に設定し、通常の更新に戻す
-            // アニメーション完了直後の最新の時刻でprevTimeStrを更新する
-            prevTimeStr = getFormattedTimeString(is24Hour, new Date()); 
-            isTimeModeAnimating = false;
-
-            // 6. アニメーション速度を通常に戻す
-            setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
-            // updateDisplayはメインループから呼ばれるため、ここでの呼び出しは不要
-            // updateDisplay(false); 
-        }
-        
-        /**
-         * 時刻の桁をフルサイクルでアニメーションさせます。
-         * @param {string[]} sequence - '03', '04', ..., '02' のように、表示する2桁の文字列配列
-         * @param {number} flipDelay - フリップ間の遅延時間 (ms)
-         */
-        async function animateHourTransition(sequence, flipDelay) {
-            const hTens = allDigits.time.hTens;
-            const hOnes = allDigits.time.hOnes; 
-
-            for (let i = 0; i < sequence.length; i++) {
-                const nextHStr = sequence[i]; // フリップ後の表示値
-                
-                // flipCardは現在のtopの値を見て、newValueが異なるときのみアニメーションをトリガーします。
-                flipCard(hTens, nextHStr[0], false);
-                flipCard(hOnes, nextHStr[1], false); 
-
-                // フリップが完了するまで待機
-                await new Promise(resolve => setTimeout(resolve, flipDelay));
-            }
-        }
-
-
-        function setDowLanguage(lang) {
-            // アニメーション実行中は操作を無視
-            if (isDowAnimating) return;
-            
-            // 言語が同じなら何もしない
-            if (dowLanguage === lang) return;
-
-            // 言語ボタンのアクティブ状態を更新
-            btns.langJa.classList.remove('active');
-            btns.langEn.classList.remove('active');
-            if (lang === 'ja') {
-                btns.langJa.classList.add('active');
-            } else {
-                btns.langEn.classList.add('active');
-            }
-            
-            dowLanguage = lang;
-            
-            const newDayOfWeekStr = getDayOfWeek();
-            
-            // 言語が変わった場合は、フリップシーケンスを実行
-            if (newDayOfWeekStr !== prevDayOfWeekStr) {
-                // 言語切り替えフラグを立てて実行
-                animateDowTransition(newDayOfWeekStr, false, true); 
-            }
-        }
-
-        /**
-         * 曜日表示の3文字文字列を返します。
-         * @param {string} lang 取得したい言語 ('ja' or 'en')
-         * @returns {string} 3文字形式の曜日文字列 (例: "(水)", "Wed")
-         */
-        function getDayOfWeek(lang = dowLanguage) {
-            const now = new Date();
-            const dayIndex = now.getDay();
-            
-            if (lang === 'ja') {
-                const daysJa = ["(日)", "(月)", "(火)", "(水)", "(木)", "(金)", "(土)"];
-                return daysJa[dayIndex];
-            } else {
-                // 英語 (Thuを使用)
-                const daysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-                return daysEn[dayIndex];
-            }
-        }
-        
-        /**
-         * 指定されたDateオブジェクトに基づいて日付文字列を返します。
-         * @param {Date} date - Dateオブジェクト
-         * @returns {string} 日付文字列 (YYMMDD)
-         */
-        function getDateString(date) {
-            const year = date.getFullYear() % 100;
-            const month = date.getMonth() + 1;
-            const day = date.getDate();
-
-            const yStr = String(year).padStart(2, '0');
-            const mStr = String(month).padStart(2, '0');
-            const dStr = String(day).padStart(2, '0');
-
-            return yStr + mStr + dStr;
-        }
-
-        function updateDisplay(isInitial) {
-            const now = new Date(); // Dateオブジェクトを一度だけ取得
-
-            // --- Time Update ---
-            const timeStr = getFormattedTimeString(is24Hour, now); 
-            
-            const timeDigitMap = [
-                { el: allDigits.time.hTens, val: timeStr[0] },
-                { el: allDigits.time.hOnes, val: timeStr[1] },
-                { el: allDigits.time.mTens, val: timeStr[2] },
-                { el: allDigits.time.mOnes, val: timeStr[3] },
-                { el: allDigits.time.sTens, val: timeStr[4] },
-                { el: allDigits.time.sOnes, val: timeStr[5] }
-            ];
-
-            timeDigitMap.forEach((item, index) => {
-                const prevVal = prevTimeStr[index];
-                // 時刻モードアニメーション中は、時(H)の桁はanimateHourTransitionで制御されるため、
-                // Hの桁(インデックス0, 1)はスキップする
-                if (isTimeModeAnimating && (index === 0 || index === 1) ) {
-                    return;
-                }
-                
-                if (item.val !== prevVal) {
-                    flipCard(item.el, item.val, isInitial);
-                }
-            });
-
-            prevTimeStr = timeStr;
-
-
-            // --- Date and Day of Week Update ---
-            // 毎分00秒、または日付が変わるタイミングで更新
-            if (now.getSeconds() === 0 || isInitial) {
-                const dateStr = getDateString(now);
-                
-                // 1. Date Flipping
-                const dateDigitMap = [
-                    { el: allDigits.date.yTens, val: dateStr[0] },
-                    { el: allDigits.date.yOnes, val: dateStr[1] },
-                    { el: allDigits.date.mTens, val: dateStr[2] },
-                    { el: allDigits.date.mOnes, val: dateStr[3] },
-                    { el: allDigits.date.dTens, val: dateStr[4] },
-                    { el: allDigits.date.dOnes, val: dateStr[5] }
-                ];
-
-                dateDigitMap.forEach((item, index) => {
-                    const prevVal = prevDateStr[index];
-                    if (item.val !== prevVal) {
-                        flipCard(item.el, item.val, isInitial);
-                    }
-                });
-                
-                // 2. Day of Week Flipping (日付が変わったら曜日も更新)
-                if (dateStr !== prevDateStr || isInitial) {
-                    const newDayOfWeekStr = getDayOfWeek();
-                    
-                    // 日付が変わった場合、または初回でprevDayOfWeekStrが初期値の場合
-                    if (newDayOfWeekStr !== prevDayOfWeekStr && !isDowAnimating) {
-                        animateDowTransition(newDayOfWeekStr, isInitial, false);
-                    }
-                }
-                
-                prevDateStr = dateStr;
-            }
-        }
-        
-        /**
-         * 指定されたミリ秒待機し、フリップ操作を実行するPromiseヘルパー
-         * @param {string} value - 次の曜日文字列
-         * @param {number} delayMs - 待機ミリ秒数
-         */
-        function performDowFlip(value, delayMs) {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    // アニメーションなしで即座に設定するフラグはfalse (アニメーションが必要)
-                    flipDow(value, false); 
-                    prevDayOfWeekStr = value;
-                    resolve();
-                }, delayMs);
-            });
-        }
-
-        /**
-         * 曜日表示をフリップシーケンスに沿ってアニメーションさせます。(非同期処理でカクつきを解消)
-         * @param {string} targetDowStr 目的の曜日文字列 (例: "Wed")
-         * @param {boolean} isInitial 初回ロードかどうか
-         * @param {boolean} isLanguageSwitch 言語切り替えによる呼び出しであるか
-         */
-        async function animateDowTransition(targetDowStr, isInitial, isLanguageSwitch) {
-            if (isDowAnimating) return;
-
-            // アニメーション速度を高速に設定
-            setAllCardsAnimationDuration(FLIP_DURATION_FAST_MS);
-
-            const currentDow3Char = prevDayOfWeekStr; 
-            const target3Char = targetDowStr;
-
-            // 初期化またはエラー時は即座にセットして終了
-            if (isInitial || !DOW_FLIP_SEQUENCE_3CHAR.includes(currentDow3Char) || !DOW_FLIP_SEQUENCE_3CHAR.includes(target3Char)) {
-                flipDow(target3Char, true);
-                prevDayOfWeekStr = target3Char;
-                // 速度を通常に戻す
-                setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
-                return;
-            }
-
-            let currentIndex = DOW_FLIP_SEQUENCE_3CHAR.indexOf(currentDow3Char);
-            let targetIndex = DOW_FLIP_SEQUENCE_3CHAR.indexOf(target3Char);
-
-            const sequenceToAnimate = [];
-            let tempIndex = currentIndex;
-            
-            // 日付更新 (次の曜日に進む) のケース
-            const isSingleStep = !isLanguageSwitch && (
-                targetIndex === (currentIndex + 1) % DOW_FLIP_SEQUENCE_3CHAR.length ||
-                (currentIndex === DOW_FLIP_SEQUENCE_3CHAR.length - 1 && targetIndex === 0)
-            );
-
-            if (isSingleStep) {
-                // 日付更新時は、次の曜日のみフリップ (1ステップ)
-                sequenceToAnimate.push(target3Char);
-            } else {
-                // 言語切り替え時は、フリップシーケンス全体を経由して遷移
-                
-                // 1. 現在の言語のシーケンスの最後まで (土曜日/Sat)
-                const languageBoundary = dowLanguage === 'ja' ? 6 : DOW_FLIP_SEQUENCE_3CHAR.length - 1;
-                while (tempIndex !== languageBoundary) {
-                    tempIndex = (tempIndex + 1) % DOW_FLIP_SEQUENCE_3CHAR.length;
-                    sequenceToAnimate.push(DOW_FLIP_SEQUENCE_3CHAR[tempIndex]);
-                    if (tempIndex === DOW_FLIP_SEQUENCE_3CHAR.length - 1) break; // 英語の土曜日まで到達したらストップ
-                }
-                
-                // 2. 目標の曜日に到達するまで (ターゲット言語のシーケンス)
-                const startTargetLanguage = dowLanguage === 'ja' ? 0 : 7;
-                tempIndex = startTargetLanguage - 1; // 0 または 7 から開始
-                while (true) {
-                    tempIndex = (tempIndex + 1);
-                    const nextDow = DOW_FLIP_SEQUENCE_3CHAR[tempIndex % DOW_FLIP_SEQUENCE_3CHAR.length];
-                    sequenceToAnimate.push(nextDow);
-
-                    if (nextDow === target3Char) {
-                        break;
-                    }
-                    if (sequenceToAnimate.length > 20) break; // 無限ループ対策
-                }
-            }
-            
-            if (sequenceToAnimate.length === 0) return; 
-
-            isDowAnimating = true;
-            // アニメーションが完全に完了するのを待つための遅延時間 (CSSアニメーション時間 + わずかなバッファ)
-            const flipDelay = FLIP_DURATION_FAST_MS + 50; 
-            
-            try {
-                // sequenceToAnimateを順番に処理し、各フリップが完了するのを待つ
-                for (const nextValue of sequenceToAnimate) {
-                    await performDowFlip(nextValue, flipDelay);
-                }
-            } catch (error) {
-                console.error("曜日フリップアニメーション中にエラーが発生しました:", error);
-            } finally {
-                // 全てのフリップが完了したらフラグをリセット
-                isDowAnimating = false;
-                // アニメーション速度を通常に戻す
-                setAllCardsAnimationDuration(FLIP_DURATION_NORMAL_MS);
-            }
-        }
-        
-        /**
-         * 3つの曜日フリップカードを同時にフリップさせるヘルパー関数。
-         * @param {string} dowStr 3文字の曜日文字列 (例: "(水)", "Wed")
-         * @param {boolean} isInitial アニメーションなしで即座に設定するかどうか
-         */
-        function flipDow(dowStr, isInitial) {
-            const chars = dowStr.split('');
-            if (chars.length !== 3) return;
-
-            // 各文字を個別のフリップカードに適用
-            flipCard(allDigits.dow.char1, chars[0], isInitial);
-            flipCard(allDigits.dow.char2, chars[1], isInitial);
-            flipCard(allDigits.dow.char3, chars[2], isInitial);
-        }
-
-        function flipCard(card, newValue, isInitial) {
-            const top = card.querySelector('.top span');
-            const bottom = card.querySelector('.bottom span');
-            const topFlip = card.querySelector('.top-flip span');
-            const bottomFlip = card.querySelector('.bottom-flip span');
-
-            const durationMs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--flip-duration')) * 1000;
-
-            if (isInitial) {
-                // アニメーションなしで即座に設定
-                top.textContent = newValue;
-                bottom.textContent = newValue;
-                topFlip.textContent = newValue;
-                bottomFlip.textContent = newValue;
-                return;
-            }
-
-            const currentValue = top.textContent;
-            // 新しい値が現在の値と同じ場合はフリップしない
-            if (currentValue === newValue) return;
-
-            // 1. 次の値と現在の値をフリップ要素にセット
-            topFlip.textContent = currentValue; 
-            bottomFlip.textContent = newValue;  
-            top.textContent = newValue; // topの最終的な値はnewValue
-
-            // 2. アニメーションをリセットし、再実行を強制
-            card.classList.remove('flipping');
-            // リフローを強制 (重要)
-            void card.offsetWidth; 
-            card.classList.add('flipping');
-
-            // 3. アニメーション終了後にクラスをクリアし、底側の表示を確定
-            // ANIMATION_DURATIONの後に実行
-            setTimeout(() => {
-                bottom.textContent = newValue;
-                topFlip.textContent = newValue; // topFlipの値もnewValueに統一 (次のアニメーション準備)
-                card.classList.remove('flipping');
-            }, durationMs); 
-        }
-
-        function toggleFullScreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                });
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
-            }
-        }
-
-        // Start
-        window.onload = init;
-
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
